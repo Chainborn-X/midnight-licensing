@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Description>License issuer service for Chainborn licensing platform</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\sdk\Chainborn.Licensing.Abstractions\Chainborn.Licensing.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

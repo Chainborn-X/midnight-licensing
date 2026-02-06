@@ -1,0 +1,9 @@
+{
+  "productId": "acme-data-platform",
+  "requiredTier": "professional",
+  "requiredFeatures": ["real-time-sync"],
+  "bindingMode": "Environment",
+  "cacheTtlSeconds": 3600,
+  "revocationModel": "ValidityByRenewal",
+  "version": "1.0.0"
+}

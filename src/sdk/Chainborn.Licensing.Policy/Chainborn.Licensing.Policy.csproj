@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Policy providers and validation for Chainborn licensing platform</Description>
+    <PackageTags>licensing;midnight;blockchain;policy</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Chainborn.Licensing.Abstractions\Chainborn.Licensing.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

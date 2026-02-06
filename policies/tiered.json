@@ -1,0 +1,9 @@
+{
+  "productId": "acme-workflow-engine",
+  "requiredTier": "enterprise",
+  "requiredFeatures": ["advanced-reporting", "multi-tenant"],
+  "bindingMode": "Organization",
+  "cacheTtlSeconds": 43200,
+  "revocationModel": "ExplicitOnChain",
+  "version": "1.0.0"
+}
