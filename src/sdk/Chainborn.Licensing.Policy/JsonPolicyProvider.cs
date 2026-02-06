@@ -29,6 +29,12 @@ public class JsonPolicyProvider : IPolicyProvider
             throw new ArgumentException("Product ID cannot be null or whitespace.", nameof(productId));
         }
 
+        // Validate product ID to prevent path traversal attacks
+        if (productId.Contains("..") || productId.Contains('/') || productId.Contains('\\'))
+        {
+            throw new ArgumentException("Product ID contains invalid characters.", nameof(productId));
+        }
+
         // Check cache first
         if (_cache.TryGetValue(productId, out var cachedPolicy))
         {
@@ -37,6 +43,14 @@ public class JsonPolicyProvider : IPolicyProvider
 
         // Load from file
         var policyFilePath = Path.Combine(_policyDirectory, $"{productId}.json");
+        
+        // Ensure the resolved path is within the policy directory
+        var fullPolicyPath = Path.GetFullPath(policyFilePath);
+        var fullPolicyDirectory = Path.GetFullPath(_policyDirectory);
+        if (!fullPolicyPath.StartsWith(fullPolicyDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Product ID resolves to a path outside the policy directory.", nameof(productId));
+        }
         
         if (!File.Exists(policyFilePath))
         {
@@ -56,7 +70,7 @@ public class JsonPolicyProvider : IPolicyProvider
         var policy = new LicensePolicy(
             policyDto.ProductId,
             policyDto.RequiredTier,
-            (IReadOnlyList<string>)(policyDto.RequiredFeatures ?? new List<string>()),
+            (IReadOnlyList<string>?)policyDto.RequiredFeatures ?? Array.Empty<string>(),
             policyDto.BindingMode,
             TimeSpan.FromSeconds(policyDto.CacheTtlSeconds),
             policyDto.RevocationModel,

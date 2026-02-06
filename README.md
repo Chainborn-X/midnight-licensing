@@ -103,13 +103,17 @@ npm test
 
 ### Docker
 
+Build the Docker image from the repository root:
+
 ```bash
 # Build the sample application Docker image
-cd src/sample-app/Chainborn.Licensing.SampleApp
-docker build -t chainborn-sample-app .
+docker build -f src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile -t chainborn-sample-app .
 
 # Run the containerized application
 docker run -p 8080:8080 chainborn-sample-app
+
+# Test the health endpoint
+curl http://localhost:8080/health
 ```
 
 ## Documentation
