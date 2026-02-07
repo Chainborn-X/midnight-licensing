@@ -161,12 +161,15 @@ public class LicenseValidator : ILicenseValidator
             context.StrictnessMode.ToString()
         };
 
-        // Include binding data if present
+        // Include binding data if present, using secure serialization
         if (context.BindingData != null && context.BindingData.Count > 0)
         {
-            var bindingDataHash = string.Join("|", context.BindingData
+            // Use Base64 encoding to avoid injection attacks from special characters in binding data
+            var bindingDataString = string.Join("|", context.BindingData
                 .OrderBy(kvp => kvp.Key)
                 .Select(kvp => $"{kvp.Key}={kvp.Value}"));
+            var bindingDataBytes = System.Text.Encoding.UTF8.GetBytes(bindingDataString);
+            var bindingDataHash = Convert.ToBase64String(bindingDataBytes);
             keyParts.Add(bindingDataHash);
         }
 

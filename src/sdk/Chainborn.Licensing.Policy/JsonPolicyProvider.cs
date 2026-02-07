@@ -86,15 +86,14 @@ public class JsonPolicyProvider : IPolicyProvider
         }
         catch (JsonException ex)
         {
-            // Log and return null for invalid JSON instead of crashing
-            // The caller can handle this as a "policy invalid/unreadable" error
-            _cache[productId] = null;
+            // Don't cache errors - allow retry on subsequent calls
+            // Throw with actionable error message for caller to handle
             throw new InvalidOperationException($"Failed to parse policy file for product '{productId}': {ex.Message}", ex);
         }
         catch (IOException ex)
         {
-            // Log and return null for I/O errors
-            _cache[productId] = null;
+            // Don't cache I/O errors - they may be transient (e.g., file lock)
+            // Allow retry on subsequent calls
             throw new InvalidOperationException($"Failed to read policy file for product '{productId}': {ex.Message}", ex);
         }
     }

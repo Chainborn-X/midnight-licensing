@@ -1,6 +1,7 @@
 using Chainborn.Licensing.Abstractions;
 using Chainborn.Licensing.Policy;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Chainborn.Licensing.Validator;
 
@@ -30,8 +31,8 @@ public static class ServiceCollectionExtensions
         
         // Register default implementations if not already registered
         // These can be overridden by calling code before calling AddLicenseValidation
-        services.AddSingleton<IValidationCache, InMemoryValidationCache>();
-        services.AddSingleton<IProofVerifier, MockProofVerifier>();
+        services.TryAddSingleton<IValidationCache, InMemoryValidationCache>();
+        services.TryAddSingleton<IProofVerifier, MockProofVerifier>();
         
         services.AddSingleton<ILicenseValidator, LicenseValidator>();
 
