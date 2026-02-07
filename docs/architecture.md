@@ -239,7 +239,7 @@ public ProofLoader(
     ILogger<ProofLoader> logger,
     Func<string, string?> getEnvironmentVariable,
     Func<string, bool> fileExists,
-    Func<string, Task<string>> readFileAsync)
+    Func<string, CancellationToken, Task<string>> readFileAsync)
 ```
 
 This design allows tests to mock all external dependencies and verify behavior in isolation.

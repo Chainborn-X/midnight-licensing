@@ -52,7 +52,7 @@ public class ProofLoader : IProofLoader
     }
 
     /// <inheritdoc />
-    public async Task<ProofEnvelope?> LoadAsync(CancellationToken cancellationToken = default)
+    public async Task<ProofEnvelope> LoadAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Attempting to load proof envelope");
 
@@ -125,7 +125,7 @@ public class ProofLoader : IProofLoader
             _logger.LogDebug("Successfully read proof file: {FilePath}", filePath);
             return DeserializeProofEnvelope(json);
         }
-        catch (Exception ex) when (ex is not LicenseValidationException)
+        catch (Exception ex) when (ex is not LicenseValidationException and not OperationCanceledException)
         {
             var errorMessage = $"Failed to load proof envelope from file: {filePath}";
             _logger.LogError(ex, "{ErrorMessage}", errorMessage);
@@ -180,6 +180,24 @@ public class ProofLoader : IProofLoader
                 throw new LicenseValidationException("Proof envelope is missing 'Challenge.Nonce' property");
             }
 
+            var issuedAt = envelope.Proof.Challenge.IssuedAt;
+            var expiresAt = envelope.Proof.Challenge.ExpiresAt;
+
+            if (issuedAt == DateTimeOffset.MinValue)
+            {
+                throw new LicenseValidationException("Proof envelope is missing or has an invalid 'Challenge.IssuedAt' property");
+            }
+
+            if (expiresAt == DateTimeOffset.MinValue)
+            {
+                throw new LicenseValidationException("Proof envelope is missing or has an invalid 'Challenge.ExpiresAt' property");
+            }
+
+            if (expiresAt <= issuedAt)
+            {
+                throw new LicenseValidationException("Proof envelope has invalid challenge timestamps: 'ExpiresAt' must be after 'IssuedAt'");
+            }
+
             // Convert DTO to domain model
             var proof = new LicenseProof(
                 ProofBytes: Convert.FromBase64String(envelope.Proof.ProofBytes),
@@ -210,7 +228,7 @@ public class ProofLoader : IProofLoader
         }
         catch (FormatException ex)
         {
-            var errorMessage = "Failed to decode base64 proof bytes in envelope";
+            var errorMessage = "Failed to decode base64 data in proof envelope";
             _logger.LogError(ex, "{ErrorMessage}", errorMessage);
             throw new LicenseValidationException(errorMessage, ex);
         }

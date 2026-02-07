@@ -430,4 +430,223 @@ public class ProofLoaderTests
 
         Assert.Contains("ProductId", exception.Message);
     }
+
+    [Fact]
+    public async Task LoadAsync_MissingVerificationKeyBytes_ThrowsException()
+    {
+        // Arrange
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = "dGVzdA==",
+                VerificationKeyBytes = (string?)null,
+                ProductId = "test-product",
+                Challenge = new
+                {
+                    Nonce = "nonce",
+                    IssuedAt = DateTimeOffset.UtcNow,
+                    ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("VerificationKeyBytes", exception.Message);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MissingChallenge_ThrowsException()
+    {
+        // Arrange
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = "dGVzdA==",
+                VerificationKeyBytes = "dGVzdA==",
+                ProductId = "test-product",
+                Challenge = (object?)null
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("Challenge", exception.Message);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MissingNonce_ThrowsException()
+    {
+        // Arrange
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = "dGVzdA==",
+                VerificationKeyBytes = "dGVzdA==",
+                ProductId = "test-product",
+                Challenge = new
+                {
+                    Nonce = (string?)null,
+                    IssuedAt = DateTimeOffset.UtcNow,
+                    ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("Nonce", exception.Message);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MissingIssuedAt_ThrowsException()
+    {
+        // Arrange
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = "dGVzdA==",
+                VerificationKeyBytes = "dGVzdA==",
+                ProductId = "test-product",
+                Challenge = new
+                {
+                    Nonce = "nonce",
+                    // IssuedAt omitted - will deserialize to MinValue
+                    ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("IssuedAt", exception.Message);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MissingExpiresAt_ThrowsException()
+    {
+        // Arrange
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = "dGVzdA==",
+                VerificationKeyBytes = "dGVzdA==",
+                ProductId = "test-product",
+                Challenge = new
+                {
+                    Nonce = "nonce",
+                    IssuedAt = DateTimeOffset.UtcNow,
+                    // ExpiresAt omitted - will deserialize to MinValue
+                }
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("ExpiresAt", exception.Message);
+    }
+
+    [Fact]
+    public async Task LoadAsync_ExpiresAtBeforeIssuedAt_ThrowsException()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = "dGVzdA==",
+                VerificationKeyBytes = "dGVzdA==",
+                ProductId = "test-product",
+                Challenge = new
+                {
+                    Nonce = "nonce",
+                    IssuedAt = now,
+                    ExpiresAt = now.AddHours(-1) // Before IssuedAt
+                }
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("ExpiresAt", exception.Message);
+        Assert.Contains("IssuedAt", exception.Message);
+    }
 }
