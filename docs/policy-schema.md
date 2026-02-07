@@ -14,7 +14,7 @@ The License Policy Schema is the foundational artifact that drives all licensing
 ## Schema Location
 
 - **Schema Definition**: `policies/schemas/license-policy.schema.json`
-- **JSON Schema Version**: Draft 2020-12
+- **JSON Schema Version**: Draft-07
 - **Schema ID**: `https://chainborn.io/schemas/license-policy.schema.json`
 
 ## Fields Reference
