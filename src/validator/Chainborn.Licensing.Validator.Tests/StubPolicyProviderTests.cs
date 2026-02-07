@@ -101,4 +101,46 @@ public class StubPolicyProviderTests
         Assert.NotNull(policy);
         Assert.Equal(TimeSpan.FromHours(1), policy.CacheTtl);
     }
+
+    [Fact]
+    public async Task GetPolicyAsync_WithNullProductId_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _provider.GetPolicyAsync(null!));
+    }
+
+    [Fact]
+    public async Task GetPolicyAsync_WithEmptyProductId_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _provider.GetPolicyAsync(string.Empty));
+    }
+
+    [Fact]
+    public async Task GetPolicyAsync_WithWhitespaceProductId_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _provider.GetPolicyAsync("   "));
+    }
+
+    [Fact]
+    public async Task GetPolicyAsync_WithPathTraversalAttempt_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _provider.GetPolicyAsync("../secret"));
+    }
+
+    [Fact]
+    public async Task GetPolicyAsync_WithSlashInProductId_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _provider.GetPolicyAsync("product/malicious"));
+    }
+
+    [Fact]
+    public async Task GetPolicyAsync_WithBackslashInProductId_ThrowsArgumentException()
+    {
+        // Act & Assert
+        await Assert.ThrowsAsync<ArgumentException>(() => _provider.GetPolicyAsync("product\\malicious"));
+    }
 }

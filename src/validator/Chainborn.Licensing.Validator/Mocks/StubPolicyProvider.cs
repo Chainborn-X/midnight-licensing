@@ -20,6 +20,19 @@ public class StubPolicyProvider : IPolicyProvider
 
     public Task<LicensePolicy?> GetPolicyAsync(string productId, CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(productId))
+        {
+            throw new ArgumentException("Product ID cannot be null or whitespace.", nameof(productId));
+        }
+
+        // Validate product ID to prevent path traversal attacks (consistent with JsonPolicyProvider)
+        if (productId.Contains("..") || productId.Contains('/') || productId.Contains('\\'))
+        {
+            throw new ArgumentException("Product ID contains invalid characters.", nameof(productId));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
         _logger.LogInformation("StubPolicyProvider: Getting policy for product {ProductId}", productId);
         
         if (_policies.TryGetValue(productId, out var policy))

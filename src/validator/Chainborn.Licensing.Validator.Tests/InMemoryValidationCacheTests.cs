@@ -61,11 +61,10 @@ public class InMemoryValidationCacheTests
             ExpiresAt: now.AddSeconds(-1), // Already expired
             CacheKey: cacheKey
         );
-        var ttl = TimeSpan.FromMilliseconds(1); // Very short TTL
+        var ttl = TimeSpan.Zero; // Immediately expired TTL
 
         // Act
         await _cache.SetAsync(cacheKey, validationResult, ttl);
-        await Task.Delay(10); // Wait for expiry
         var retrievedResult = await _cache.GetAsync(cacheKey);
 
         // Assert
