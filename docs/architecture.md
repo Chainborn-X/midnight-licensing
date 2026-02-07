@@ -134,3 +134,43 @@ The interface design ensures we can swap implementations without changing any co
 - Hierarchical policies (product families)
 - Metrics and telemetry integration
 - Cloud secret manager integration (Azure Key Vault, AWS Secrets Manager)
+
+---
+
+## Known Unknowns
+
+- **Compact proof output format stability:** Midnight is currently in the Kūkolu phase with mainnet genesis projected within ~90 days (as of Jan 2026). The Compact language and proof output format may change before or after mainnet. Keep test fixtures locked to specific testnet versions and regression test regularly when upgrading SDK versions.
+- **.NET ZK proof verification availability:** There is currently no official .NET-native ZK proof verifier for Midnight. The ecosystem is TypeScript/JavaScript-first. Spike #3 is investigating feasibility — this is the single biggest technical risk to the project. If native verification proves infeasible, fallback strategies exist (see below).
+- **Wallet and proof generation tooling maturity:** Midnight wallet tooling (CLI, browser extension, desktop) is still evolving. The proof generation UX for customers may change significantly as the ecosystem matures. Spike #2 is tracking this.
+- **Contract upgradability:** It is not yet confirmed whether Compact contracts support schema migration or upgradability patterns. If license struct changes are needed post-deployment, this could require redeployment and migration tooling. Spike #4 is investigating.
+- **Legal and compliance considerations:** ZK-based licensing in regulated geographies may have implications that need legal review before the first enterprise pilot.
+
+## Platform Agnostic by Design
+
+- The validator architecture is intentionally not married to Midnight. The `IProofVerifier` interface is the single, deliberately thin bridge point between any ZK proof system and the .NET validation pipeline.
+- Everything above `IProofVerifier` — policy evaluation, caching, binding checks, TTL enforcement, nonce verification — is pure .NET business logic with zero blockchain dependency.
+- To support a different ZK proof system or blockchain, you only need to implement `IProofVerifier` with the new backend. No other code changes are required unless public input semantics change.
+- To add a new policy field or constraint, extend the `LicensePolicy` record and update only the policy evaluation logic in `LicenseValidator`.
+- This design makes the platform suitable for future multi-chain or multi-proof-system scenarios.
+
+## Fallback Verification Strategies
+
+- If .NET-native proof verification is not feasible (the most likely risk), three fallback approaches are supported without breaking the validator pipeline:
+  1. **Node.js sidecar process:** Run Midnight's official TypeScript verification logic as a lightweight HTTP microservice or stdin/stdout subprocess. The `IProofVerifier` implementation calls it via HTTP or process invocation. Adds a runtime dependency but uses battle-tested verification code.
+  2. **WASM module:** If Midnight's verifier is available as WASM (or can be compiled from Rust to WASM), load it in-process via a .NET WASM runtime (e.g., Wasmtime for .NET). Best performance of the fallback options, no external process needed.
+  3. **Native interop (P/Invoke):** If a Rust or C verification library exists, wrap it via P/Invoke or NativeAOT bindings. Highest performance, but requires platform-specific native binaries in the NuGet package.
+- All three approaches are transparent to the rest of the system — `LicenseValidator`, policy evaluation, caching, and the sample app don't change regardless of which `IProofVerifier` implementation is used.
+- The decision on which approach to use will be driven by the findings of Spike #3.
+
+## External References
+
+- <a href="https://docs.midnight.network/">Midnight Official Documentation</a> — Full API reference, developer guides, troubleshooting
+- <a href="https://midnight.network/developer-hub">Midnight Developer Hub</a> — SDK downloads, tooling, community resources
+- <a href="https://docs.midnight.network/develop/reference/compact/">Compact Language Reference</a> — Language spec, standard library, circuit syntax
+- <a href="https://midnight.network/developer-hub">Midnight Academy 2.0</a> — Free developer education curriculum
+- <a href="https://midnight.network/">Nightpaper</a> — Technical whitepaper covering proof architecture and design decisions
+- <a href="https://github.com/joacolinares/kyc-midnight">KYC Reference dApp (GitHub)</a> — Example privacy-preserving dApp using Compact and ZK proofs
+- <a href="https://github.com/luislucena16/midnight-quick-starter">Midnight Quick Starter Template</a> — Monorepo template with contracts, backend, frontend
+- <a href="https://awesomemidnight.com/tooling">Awesome Midnight — Tooling &amp; Libraries</a> — Community-curated SDK and tool index
+- <a href="https://midnight.network/developer-hub">Midnight Discord</a> — Community support and developer discussions
+- <a href="https://midnight.network/blog/state-of-the-network-january-2026">State of the Network — January 2026</a> — Latest network status and roadmap update
