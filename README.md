@@ -120,6 +120,7 @@ curl http://localhost:8080/health
 
 - [Product Requirements Specification](docs/prs.md) - Detailed requirements and success criteria
 - [Architecture](docs/architecture.md) - Technical architecture and bridge point design
+- [Proof Envelope Format](docs/proof-envelope.md) - Canonical JSON format for license proofs
 - [Spike Documentation](docs/spikes/) - Research findings from Milestone 1 spike issues
   - [Spike #1: License Policy Schema](docs/spikes/spike-001-policy-schema.md)
   - [Spike #2: Wallet Interaction Model](docs/spikes/spike-002-wallet-interaction.md)
