@@ -16,12 +16,23 @@ public static class ServiceCollectionExtensions
         this IServiceCollection services,
         Action<LicenseValidationOptions> configure)
     {
+        if (configure == null)
+        {
+            throw new ArgumentNullException(nameof(configure));
+        }
+
         var options = new LicenseValidationOptions();
         configure(options);
 
         services.AddSingleton(options);
         services.AddSingleton<IPolicyProvider>(sp =>
             new JsonPolicyProvider(options.PolicyDirectory));
+        
+        // Register default implementations if not already registered
+        // These can be overridden by calling code before calling AddLicenseValidation
+        services.AddSingleton<IValidationCache, InMemoryValidationCache>();
+        services.AddSingleton<IProofVerifier, MockProofVerifier>();
+        
         services.AddSingleton<ILicenseValidator, LicenseValidator>();
 
         return services;

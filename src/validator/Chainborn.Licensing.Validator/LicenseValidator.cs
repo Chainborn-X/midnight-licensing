@@ -34,6 +34,19 @@ public class LicenseValidator : ILicenseValidator
         if (context == null) throw new ArgumentNullException(nameof(context));
 
         var now = DateTimeOffset.UtcNow;
+
+        // Validate that proof product ID matches context product ID
+        if (!string.Equals(proof.ProductId, context.ProductId, StringComparison.Ordinal))
+        {
+            _logger.LogError("Product ID mismatch: proof is for '{ProofProductId}' but validation requested for '{ContextProductId}'",
+                proof.ProductId, context.ProductId);
+            return new LicenseValidationResult(
+                IsValid: false,
+                Errors: new[] { $"Product ID mismatch: proof is for '{proof.ProductId}' but validation requested for '{context.ProductId}'" },
+                ValidatedAt: now
+            );
+        }
+
         var cacheKey = GenerateCacheKey(proof, context);
 
         // Step 1: Check cache
@@ -56,7 +69,19 @@ public class LicenseValidator : ILicenseValidator
             );
         }
 
-        // Step 3: Verify proof cryptographically
+        // Step 3: Validate nonce (challenge) before expensive proof verification
+        var nonceErrors = ValidateNonce(proof.Challenge, now);
+        if (nonceErrors.Count > 0)
+        {
+            _logger.LogWarning("Nonce validation failed for product {ProductId}", context.ProductId);
+            return new LicenseValidationResult(
+                IsValid: false,
+                Errors: nonceErrors,
+                ValidatedAt: now
+            );
+        }
+
+        // Step 4: Verify proof cryptographically
         var verificationResult = await _proofVerifier.VerifyAsync(
             proof.ProofBytes,
             proof.VerificationKeyBytes,
@@ -71,18 +96,6 @@ public class LicenseValidator : ILicenseValidator
             return new LicenseValidationResult(
                 IsValid: false,
                 Errors: new[] { verificationResult.Error ?? "Proof verification failed" },
-                ValidatedAt: now
-            );
-        }
-
-        // Step 4: Validate nonce (challenge)
-        var nonceErrors = ValidateNonce(proof.Challenge, now);
-        if (nonceErrors.Count > 0)
-        {
-            _logger.LogWarning("Nonce validation failed for product {ProductId}", context.ProductId);
-            return new LicenseValidationResult(
-                IsValid: false,
-                Errors: nonceErrors,
                 ValidatedAt: now
             );
         }
@@ -140,7 +153,23 @@ public class LicenseValidator : ILicenseValidator
 
     private static string GenerateCacheKey(LicenseProof proof, ValidationContext context)
     {
-        // Simple cache key based on product and proof nonce
-        return $"{context.ProductId}:{proof.Challenge.Nonce}";
+        // Include product ID, nonce, binding data, and strictness mode in cache key
+        var keyParts = new List<string>
+        {
+            context.ProductId,
+            proof.Challenge.Nonce,
+            context.StrictnessMode.ToString()
+        };
+
+        // Include binding data if present
+        if (context.BindingData != null && context.BindingData.Count > 0)
+        {
+            var bindingDataHash = string.Join("|", context.BindingData
+                .OrderBy(kvp => kvp.Key)
+                .Select(kvp => $"{kvp.Key}={kvp.Value}"));
+            keyParts.Add(bindingDataHash);
+        }
+
+        return string.Join(":", keyParts);
     }
 }

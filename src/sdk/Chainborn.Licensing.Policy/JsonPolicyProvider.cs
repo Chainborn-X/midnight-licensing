@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Chainborn.Licensing.Abstractions;
 
 namespace Chainborn.Licensing.Policy;
@@ -14,7 +15,8 @@ public class JsonPolicyProvider : IPolicyProvider
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
     public JsonPolicyProvider(string policyDirectory)
@@ -58,27 +60,43 @@ public class JsonPolicyProvider : IPolicyProvider
             return null;
         }
 
-        var jsonContent = await File.ReadAllTextAsync(policyFilePath, cancellationToken);
-        var policyDto = JsonSerializer.Deserialize<PolicyDto>(jsonContent, _jsonOptions);
-
-        if (policyDto == null)
+        try
         {
-            _cache[productId] = null;
-            return null;
+            var jsonContent = await File.ReadAllTextAsync(policyFilePath, cancellationToken);
+            var policyDto = JsonSerializer.Deserialize<PolicyDto>(jsonContent, _jsonOptions);
+
+            if (policyDto == null)
+            {
+                _cache[productId] = null;
+                return null;
+            }
+
+            var policy = new LicensePolicy(
+                policyDto.ProductId,
+                policyDto.RequiredTier,
+                (IReadOnlyList<string>?)policyDto.RequiredFeatures ?? Array.Empty<string>(),
+                policyDto.BindingMode,
+                TimeSpan.FromSeconds(policyDto.CacheTtlSeconds),
+                policyDto.RevocationModel,
+                policyDto.Version
+            );
+
+            _cache[productId] = policy;
+            return policy;
         }
-
-        var policy = new LicensePolicy(
-            policyDto.ProductId,
-            policyDto.RequiredTier,
-            (IReadOnlyList<string>?)policyDto.RequiredFeatures ?? Array.Empty<string>(),
-            policyDto.BindingMode,
-            TimeSpan.FromSeconds(policyDto.CacheTtlSeconds),
-            policyDto.RevocationModel,
-            policyDto.Version
-        );
-
-        _cache[productId] = policy;
-        return policy;
+        catch (JsonException ex)
+        {
+            // Log and return null for invalid JSON instead of crashing
+            // The caller can handle this as a "policy invalid/unreadable" error
+            _cache[productId] = null;
+            throw new InvalidOperationException($"Failed to parse policy file for product '{productId}': {ex.Message}", ex);
+        }
+        catch (IOException ex)
+        {
+            // Log and return null for I/O errors
+            _cache[productId] = null;
+            throw new InvalidOperationException($"Failed to read policy file for product '{productId}': {ex.Message}", ex);
+        }
     }
 
     private class PolicyDto
