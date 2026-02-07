@@ -1,10 +1,13 @@
 using System.Collections.Concurrent;
 using Chainborn.Licensing.Abstractions;
 
-namespace Chainborn.Licensing.Validator;
+namespace Chainborn.Licensing.Validator.Mocks;
 
 /// <summary>
 /// In-memory implementation of IValidationCache for development and testing.
+/// TODO: Replace with persistent caching solution (Redis, distributed cache, or file-based cache).
+/// TODO: Add cache eviction policies and memory limits for production use.
+/// TODO: Consider implementing cache warming strategies for frequently validated products.
 /// </summary>
 public class InMemoryValidationCache : IValidationCache
 {

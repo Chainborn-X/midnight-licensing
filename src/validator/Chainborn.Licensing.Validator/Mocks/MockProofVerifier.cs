@@ -1,11 +1,13 @@
 using Chainborn.Licensing.Abstractions;
 using Microsoft.Extensions.Logging;
 
-namespace Chainborn.Licensing.Validator;
+namespace Chainborn.Licensing.Validator.Mocks;
 
 /// <summary>
 /// Mock proof verifier for development and testing.
 /// WARNING: This is NOT a real implementation and should be replaced with actual Midnight ZK proof verification.
+/// TODO: Replace with real ZK proof verifier once spike-003-zk-proof-dotnet is complete.
+/// TODO: Real implementation should use WASM-based Midnight proof verification or native interop.
 /// </summary>
 public class MockProofVerifier : IProofVerifier
 {

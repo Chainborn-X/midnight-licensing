@@ -1,5 +1,6 @@
 using Chainborn.Licensing.Abstractions;
 using Chainborn.Licensing.Policy;
+using Chainborn.Licensing.Validator.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -26,11 +27,11 @@ public static class ServiceCollectionExtensions
         configure(options);
 
         services.AddSingleton(options);
-        services.AddSingleton<IPolicyProvider>(sp =>
-            new JsonPolicyProvider(options.PolicyDirectory));
         
         // Register default implementations if not already registered
         // These can be overridden by calling code before calling AddLicenseValidation
+        services.TryAddSingleton<IPolicyProvider>(sp =>
+            new JsonPolicyProvider(options.PolicyDirectory));
         services.TryAddSingleton<IValidationCache, InMemoryValidationCache>();
         services.TryAddSingleton<IProofVerifier, MockProofVerifier>();
         
