@@ -43,9 +43,16 @@ Everything above that layer (policy evaluation, caching, binding checks, TTL enf
    - Customer provides proof file to application
    - Via environment variable, mounted volume, or secret manager
    - Proof is opaque to the application
+   - **Proof Loading** (see [Proof Loader](#proof-loader) section below):
+     - `IProofLoader.LoadAsync()` checks multiple sources in priority order
+     - 1) `LICENSE_PROOF` environment variable (base64 JSON)
+     - 2) `LICENSE_PROOF_FILE` environment variable (file path)
+     - 3) `/etc/chainborn/proof.json` (default fallback)
+     - Deserializes JSON into `ProofEnvelope` structure
 
 4. **License Validation** (.NET validator, offline, local)
-   - Application loads proof file at startup
+   - Application loads proof file at startup via `IProofLoader`
+   - Extracts `LicenseProof` from `ProofEnvelope`
    - `ILicenseValidator.ValidateAsync()` called with proof + context
    - Steps:
      - Check cache for recent validation
@@ -97,6 +104,146 @@ The interface design ensures we can swap implementations without changing any co
 - **Security**: Proof verification is isolated, can be sandboxed or attested
 - **Maintainability**: Midnight SDK updates don't cascade through entire codebase
 - **Performance**: Can optimize/replace verifier without touching business logic
+
+## Proof Loader
+
+### Overview
+
+The **`IProofLoader`** interface provides a flexible mechanism for loading proof envelopes from various sources. This abstraction allows applications to obtain proofs from environment variables, files, Kubernetes secrets, or future custom sources without changing application code.
+
+### Interface
+
+```csharp
+public interface IProofLoader
+{
+    Task<ProofEnvelope?> LoadAsync(CancellationToken cancellationToken = default);
+}
+```
+
+### Resolution Priority
+
+The default `ProofLoader` implementation checks sources in this order:
+
+1. **`LICENSE_PROOF` environment variable** (base64-encoded JSON)
+   - Highest priority
+   - Useful for CI/CD, simple deployments, and testing
+   - Entire proof envelope is base64-encoded and passed as a single variable
+
+2. **`LICENSE_PROOF_FILE` environment variable** (file path)
+   - Points to a file containing proof envelope JSON
+   - Supports absolute and relative paths
+   - Useful for Docker volumes and custom mount points
+
+3. **`/etc/chainborn/proof.json`** (default fallback path)
+   - Standard location by convention
+   - Used when no environment variables are set
+   - Supports Docker volumes and Kubernetes ConfigMaps/Secrets
+
+### Proof Envelope Format
+
+The proof envelope is a JSON structure that wraps a `LicenseProof`:
+
+```json
+{
+  "proof": {
+    "proofBytes": "<base64>",
+    "verificationKeyBytes": "<base64>",
+    "productId": "product-id",
+    "challenge": {
+      "nonce": "random-nonce",
+      "issuedAt": "2026-02-07T10:00:00Z",
+      "expiresAt": "2026-02-07T11:00:00Z"
+    },
+    "metadata": {}
+  },
+  "version": "1.0",
+  "metadata": {}
+}
+```
+
+See [Proof Envelope](proof-envelope.md) for detailed format specification and examples.
+
+### Error Handling
+
+The proof loader **fails fast** with clear error messages:
+
+- **No source found**: Lists all checked locations
+- **Invalid format**: Specifies which parsing/decoding step failed
+- **File not found**: Indicates the missing file path
+- **Missing required fields**: Points to the invalid envelope structure
+
+This design ensures operators can quickly diagnose proof loading issues during deployment.
+
+### Docker & Kubernetes Integration
+
+#### Docker Compose
+```yaml
+services:
+  app:
+    environment:
+      - LICENSE_PROOF_FILE=/etc/chainborn/proof.json
+    volumes:
+      - ./proof.json:/etc/chainborn/proof.json:ro
+```
+
+#### Kubernetes Secret
+```yaml
+env:
+- name: LICENSE_PROOF_FILE
+  value: /mnt/secrets/proof.json
+volumeMounts:
+- name: proof-secret
+  mountPath: /mnt/secrets
+  readOnly: true
+volumes:
+- name: proof-secret
+  secret:
+    secretName: license-proof
+```
+
+### Extensibility
+
+The proof loader is designed for future extension:
+
+#### Custom Proof Sources
+Future versions may support plugin-based proof sources:
+- Cloud secret managers (AWS Secrets Manager, Azure Key Vault, GCP Secret Manager)
+- HTTP endpoints for centralized proof distribution
+- Database backends (PostgreSQL, Redis)
+- Custom enterprise integrations
+
+#### Planned Plugin Architecture
+```csharp
+public interface IProofSource
+{
+    Task<ProofEnvelope?> TryLoadAsync(CancellationToken cancellationToken);
+    int Priority { get; }
+}
+
+services.AddLicenseValidation(options =>
+{
+    options.ProofSources.Add<AzureKeyVaultProofSource>();
+    options.ProofSources.Add<HttpProofSource>();
+});
+```
+
+#### Schema Validation
+Future versions may include JSON Schema validation to ensure proof envelopes conform to the canonical format before deserialization, providing additional safety against malformed inputs.
+
+### Testing
+
+The `ProofLoader` constructor accepts injectable dependencies for environment access and file I/O, enabling comprehensive unit testing without file system or environment dependencies:
+
+```csharp
+public ProofLoader(
+    ILogger<ProofLoader> logger,
+    Func<string, string?> getEnvironmentVariable,
+    Func<string, bool> fileExists,
+    Func<string, Task<string>> readFileAsync)
+```
+
+This design allows tests to mock all external dependencies and verify behavior in isolation.
+
 
 ## Technology Stack
 
