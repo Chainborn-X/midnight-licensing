@@ -167,10 +167,10 @@ The interface design ensures we can swap implementations without changing any co
 - <a href="https://docs.midnight.network/">Midnight Official Documentation</a> — Full API reference, developer guides, troubleshooting
 - <a href="https://midnight.network/developer-hub">Midnight Developer Hub</a> — SDK downloads, tooling, community resources
 - <a href="https://docs.midnight.network/develop/reference/compact/">Compact Language Reference</a> — Language spec, standard library, circuit syntax
-- <a href="https://midnight.network/developer-hub">Midnight Academy 2.0</a> — Free developer education curriculum
+- <a href="https://academy.midnight.network">Midnight Academy 2.0</a> — Free developer education curriculum
 - <a href="https://midnight.network/">Nightpaper</a> — Technical whitepaper covering proof architecture and design decisions
 - <a href="https://github.com/joacolinares/kyc-midnight">KYC Reference dApp (GitHub)</a> — Example privacy-preserving dApp using Compact and ZK proofs
 - <a href="https://github.com/luislucena16/midnight-quick-starter">Midnight Quick Starter Template</a> — Monorepo template with contracts, backend, frontend
 - <a href="https://awesomemidnight.com/tooling">Awesome Midnight — Tooling &amp; Libraries</a> — Community-curated SDK and tool index
-- <a href="https://midnight.network/developer-hub">Midnight Discord</a> — Community support and developer discussions
+- <a href="https://discord.gg/midnight">Midnight Discord</a> — Community support and developer discussions
 - <a href="https://midnight.network/blog/state-of-the-network-january-2026">State of the Network — January 2026</a> — Latest network status and roadmap update
