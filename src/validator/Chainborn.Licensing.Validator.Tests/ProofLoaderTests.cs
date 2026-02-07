@@ -29,7 +29,7 @@ public class ProofLoaderTests
         getEnv("LICENSE_PROOF_FILE").Returns((string?)null);
 
         var fileExists = Substitute.For<Func<string, bool>>();
-        var readFile = Substitute.For<Func<string, Task<string>>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -58,8 +58,8 @@ public class ProofLoaderTests
         var fileExists = Substitute.For<Func<string, bool>>();
         fileExists(filePath).Returns(true);
 
-        var readFile = Substitute.For<Func<string, Task<string>>>();
-        readFile(filePath).Returns(Task.FromResult(json));
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+        readFile(filePath, Arg.Any<CancellationToken>()).Returns(Task.FromResult(json));
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -69,7 +69,7 @@ public class ProofLoaderTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal("test-product", result.Proof.ProductId);
-        await readFile.Received(1).Invoke(filePath);
+        await readFile.Received(1).Invoke(filePath, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -87,8 +87,8 @@ public class ProofLoaderTests
         var fileExists = Substitute.For<Func<string, bool>>();
         fileExists(defaultPath).Returns(true);
 
-        var readFile = Substitute.For<Func<string, Task<string>>>();
-        readFile(defaultPath).Returns(Task.FromResult(json));
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+        readFile(defaultPath, Arg.Any<CancellationToken>()).Returns(Task.FromResult(json));
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -98,7 +98,7 @@ public class ProofLoaderTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal("test-product", result.Proof.ProductId);
-        await readFile.Received(1).Invoke(defaultPath);
+        await readFile.Received(1).Invoke(defaultPath, Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class ProofLoaderTests
         var fileExists = Substitute.For<Func<string, bool>>();
         fileExists(Arg.Any<string>()).Returns(false);
 
-        var readFile = Substitute.For<Func<string, Task<string>>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -135,7 +135,7 @@ public class ProofLoaderTests
         getEnv("LICENSE_PROOF_FILE").Returns((string?)null);
 
         var fileExists = Substitute.For<Func<string, bool>>();
-        var readFile = Substitute.For<Func<string, Task<string>>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -158,7 +158,7 @@ public class ProofLoaderTests
         getEnv("LICENSE_PROOF_FILE").Returns((string?)null);
 
         var fileExists = Substitute.For<Func<string, bool>>();
-        var readFile = Substitute.For<Func<string, Task<string>>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -182,7 +182,7 @@ public class ProofLoaderTests
         var fileExists = Substitute.For<Func<string, bool>>();
         fileExists(filePath).Returns(false);
 
-        var readFile = Substitute.For<Func<string, Task<string>>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -207,7 +207,7 @@ public class ProofLoaderTests
         getEnv("LICENSE_PROOF_FILE").Returns((string?)null);
 
         var fileExists = Substitute.For<Func<string, bool>>();
-        var readFile = Substitute.For<Func<string, Task<string>>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -236,7 +236,7 @@ public class ProofLoaderTests
         getEnv("LICENSE_PROOF_FILE").Returns((string?)null);
 
         var fileExists = Substitute.For<Func<string, bool>>();
-        var readFile = Substitute.For<Func<string, Task<string>>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -269,8 +269,8 @@ public class ProofLoaderTests
         var fileExists = Substitute.For<Func<string, bool>>();
         fileExists("/some/file.json").Returns(true);
 
-        var readFile = Substitute.For<Func<string, Task<string>>>();
-        readFile("/some/file.json").Returns(Task.FromResult(fileJson));
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+        readFile("/some/file.json", Arg.Any<CancellationToken>()).Returns(Task.FromResult(fileJson));
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -280,7 +280,7 @@ public class ProofLoaderTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal("test-product", result.Proof.ProductId); // From env var, not file
-        await readFile.DidNotReceive().Invoke(Arg.Any<string>());
+        await readFile.DidNotReceive().Invoke(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -304,9 +304,9 @@ public class ProofLoaderTests
         fileExists(customPath).Returns(true);
         fileExists(defaultPath).Returns(true);
 
-        var readFile = Substitute.For<Func<string, Task<string>>>();
-        readFile(customPath).Returns(Task.FromResult(fileJson));
-        readFile(defaultPath).Returns(Task.FromResult(defaultJson));
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+        readFile(customPath, Arg.Any<CancellationToken>()).Returns(Task.FromResult(fileJson));
+        readFile(defaultPath, Arg.Any<CancellationToken>()).Returns(Task.FromResult(defaultJson));
 
         var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
 
@@ -316,8 +316,8 @@ public class ProofLoaderTests
         // Assert
         Assert.NotNull(result);
         Assert.Equal("custom-product", result.Proof.ProductId); // From custom path
-        await readFile.Received(1).Invoke(customPath);
-        await readFile.DidNotReceive().Invoke(defaultPath);
+        await readFile.Received(1).Invoke(customPath, Arg.Any<CancellationToken>());
+        await readFile.DidNotReceive().Invoke(defaultPath, Arg.Any<CancellationToken>());
     }
 
     private ProofEnvelope CreateTestProofEnvelope(string productId = "test-product", Dictionary<string, string>? metadata = null)
@@ -355,5 +355,79 @@ public class ProofLoaderTests
             envelope.Metadata
         };
         return JsonSerializer.Serialize(dto);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MissingProofBytes_ThrowsException()
+    {
+        // Arrange
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = (string?)null,
+                VerificationKeyBytes = "dGVzdA==",
+                ProductId = "test-product",
+                Challenge = new
+                {
+                    Nonce = "nonce",
+                    IssuedAt = DateTimeOffset.UtcNow,
+                    ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("ProofBytes", exception.Message);
+    }
+
+    [Fact]
+    public async Task LoadAsync_MissingProductId_ThrowsException()
+    {
+        // Arrange
+        var invalidEnvelope = new 
+        { 
+            Proof = new 
+            {
+                ProofBytes = "dGVzdA==",
+                VerificationKeyBytes = "dGVzdA==",
+                ProductId = (string?)null,
+                Challenge = new
+                {
+                    Nonce = "nonce",
+                    IssuedAt = DateTimeOffset.UtcNow,
+                    ExpiresAt = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            }
+        };
+        var json = JsonSerializer.Serialize(invalidEnvelope);
+        var base64Json = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+
+        var getEnv = Substitute.For<Func<string, string?>>();
+        getEnv("LICENSE_PROOF").Returns(base64Json);
+
+        var fileExists = Substitute.For<Func<string, bool>>();
+        var readFile = Substitute.For<Func<string, CancellationToken, Task<string>>>();
+
+        var loader = new ProofLoader(_mockLogger, getEnv, fileExists, readFile);
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<LicenseValidationException>(
+            async () => await loader.LoadAsync());
+
+        Assert.Contains("ProductId", exception.Message);
     }
 }

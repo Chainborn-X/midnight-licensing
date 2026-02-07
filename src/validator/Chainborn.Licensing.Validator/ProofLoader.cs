@@ -18,7 +18,7 @@ public class ProofLoader : IProofLoader
     private readonly ILogger<ProofLoader> _logger;
     private readonly Func<string, string?> _getEnvironmentVariable;
     private readonly Func<string, bool> _fileExists;
-    private readonly Func<string, Task<string>> _readFileAsync;
+    private readonly Func<string, CancellationToken, Task<string>> _readFileAsync;
 
     /// <summary>
     /// Creates a new ProofLoader with default file system and environment variable access.
@@ -28,7 +28,7 @@ public class ProofLoader : IProofLoader
             logger,
             Environment.GetEnvironmentVariable,
             File.Exists,
-            path => File.ReadAllTextAsync(path))
+            (path, ct) => File.ReadAllTextAsync(path, ct))
     {
     }
 
@@ -39,7 +39,7 @@ public class ProofLoader : IProofLoader
         ILogger<ProofLoader> logger,
         Func<string, string?> getEnvironmentVariable,
         Func<string, bool> fileExists,
-        Func<string, Task<string>> readFileAsync)
+        Func<string, CancellationToken, Task<string>> readFileAsync)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _getEnvironmentVariable = getEnvironmentVariable ?? throw new ArgumentNullException(nameof(getEnvironmentVariable));
@@ -117,7 +117,7 @@ public class ProofLoader : IProofLoader
                 throw new LicenseValidationException(errorMessage);
             }
 
-            var json = await _readFileAsync(filePath);
+            var json = await _readFileAsync(filePath, cancellationToken);
             _logger.LogDebug("Successfully read proof file: {FilePath}", filePath);
             return DeserializeProofEnvelope(json);
         }
@@ -151,15 +151,40 @@ public class ProofLoader : IProofLoader
                 throw new LicenseValidationException("Proof envelope is missing 'Proof' property");
             }
 
+            if (string.IsNullOrWhiteSpace(envelope.Proof.ProofBytes))
+            {
+                throw new LicenseValidationException("Proof envelope is missing 'ProofBytes' property");
+            }
+
+            if (string.IsNullOrWhiteSpace(envelope.Proof.VerificationKeyBytes))
+            {
+                throw new LicenseValidationException("Proof envelope is missing 'VerificationKeyBytes' property");
+            }
+
+            if (string.IsNullOrWhiteSpace(envelope.Proof.ProductId))
+            {
+                throw new LicenseValidationException("Proof envelope is missing 'ProductId' property");
+            }
+
+            if (envelope.Proof.Challenge == null)
+            {
+                throw new LicenseValidationException("Proof envelope is missing 'Challenge' property");
+            }
+
+            if (string.IsNullOrWhiteSpace(envelope.Proof.Challenge.Nonce))
+            {
+                throw new LicenseValidationException("Proof envelope is missing 'Challenge.Nonce' property");
+            }
+
             // Convert DTO to domain model
             var proof = new LicenseProof(
-                ProofBytes: Convert.FromBase64String(envelope.Proof.ProofBytes ?? string.Empty),
-                VerificationKeyBytes: Convert.FromBase64String(envelope.Proof.VerificationKeyBytes ?? string.Empty),
-                ProductId: envelope.Proof.ProductId ?? string.Empty,
+                ProofBytes: Convert.FromBase64String(envelope.Proof.ProofBytes),
+                VerificationKeyBytes: Convert.FromBase64String(envelope.Proof.VerificationKeyBytes),
+                ProductId: envelope.Proof.ProductId,
                 Challenge: new ProofChallenge(
-                    Nonce: envelope.Proof.Challenge?.Nonce ?? string.Empty,
-                    IssuedAt: envelope.Proof.Challenge?.IssuedAt ?? DateTimeOffset.MinValue,
-                    ExpiresAt: envelope.Proof.Challenge?.ExpiresAt ?? DateTimeOffset.MinValue
+                    Nonce: envelope.Proof.Challenge.Nonce,
+                    IssuedAt: envelope.Proof.Challenge.IssuedAt,
+                    ExpiresAt: envelope.Proof.Challenge.ExpiresAt
                 ),
                 Metadata: envelope.Proof.Metadata
             );
