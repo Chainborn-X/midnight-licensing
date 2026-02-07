@@ -1,9 +1,10 @@
 {
-  "productId": "acme-workflow-engine",
+  "$schema": "schemas/license-policy.schema.json",
+  "productId": "elsa-enterprise",
+  "version": "1.0.0",
   "requiredTier": "enterprise",
   "requiredFeatures": ["advanced-reporting", "multi-tenant"],
-  "bindingMode": "Organization",
-  "cacheTtlSeconds": 43200,
-  "revocationModel": "ExplicitOnChain",
-  "version": "1.0.0"
+  "bindingMode": "organization",
+  "cacheTtl": 43200,
+  "revocationModel": "periodic-check"
 }
