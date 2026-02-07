@@ -35,6 +35,10 @@ public class ProofLoader : IProofLoader
     /// <summary>
     /// Creates a new ProofLoader with custom environment and file system access (for testing).
     /// </summary>
+    /// <param name="logger">Logger instance</param>
+    /// <param name="getEnvironmentVariable">Function to retrieve environment variable values</param>
+    /// <param name="fileExists">Function to check if a file exists</param>
+    /// <param name="readFileAsync">Function to asynchronously read file contents</param>
     public ProofLoader(
         ILogger<ProofLoader> logger,
         Func<string, string?> getEnvironmentVariable,
@@ -57,7 +61,7 @@ public class ProofLoader : IProofLoader
         if (!string.IsNullOrWhiteSpace(envProof))
         {
             _logger.LogInformation("Loading proof from {EnvVar} environment variable", EnvVarProof);
-            return await LoadFromBase64JsonAsync(envProof, cancellationToken);
+            return LoadFromBase64Json(envProof);
         }
 
         // Priority 2: LICENSE_PROOF_FILE environment variable (file path)
@@ -84,7 +88,7 @@ public class ProofLoader : IProofLoader
         throw new LicenseValidationException(errorMessage);
     }
 
-    private async Task<ProofEnvelope> LoadFromBase64JsonAsync(string base64Json, CancellationToken cancellationToken)
+    private ProofEnvelope LoadFromBase64Json(string base64Json)
     {
         try
         {
