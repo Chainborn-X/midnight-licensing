@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://chainborn.io/schemas/license-policy.schema.json",
+  "title": "License Policy Schema",
+  "description": "Schema for defining license validation policies that drive validator behavior, contracts, proof metadata, and customer integration",
+  "type": "object",
+  "required": [
+    "productId",
+    "version",
+    "bindingMode",
+    "cacheTtl",
+    "revocationModel"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference for validation"
+    },
+    "productId": {
+      "type": "string",
+      "description": "Unique product identifier",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "Policy schema version (semver)",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "requiredTier": {
+      "type": "string",
+      "description": "Minimum required license tier",
+      "enum": [
+        "community",
+        "professional",
+        "enterprise"
+      ]
+    },
+    "requiredFeatures": {
+      "type": "array",
+      "description": "List of feature flags that must be present in the license proof",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "bindingMode": {
+      "type": "string",
+      "description": "How the license is bound to prevent unauthorized sharing",
+      "enum": [
+        "none",
+        "organization",
+        "environment"
+      ]
+    },
+    "cacheTtl": {
+      "type": "integer",
+      "description": "Cache TTL in seconds (minimum: 60, maximum: 604800 i.e. 7 days)",
+      "minimum": 60,
+      "maximum": 604800
+    },
+    "revocationModel": {
+      "type": "string",
+      "description": "How revocation is handled",
+      "enum": [
+        "none",
+        "on-chain",
+        "periodic-check"
+      ]
+    },
+    "gracePeriod": {
+      "type": "integer",
+      "description": "Grace period in seconds after validation failure before hard block",
+      "minimum": 0,
+      "default": 0
+    },
+    "customProperties": {
+      "type": "object",
+      "description": "Extensible key-value pairs for vendor-specific metadata",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": false
+}

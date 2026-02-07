@@ -1,9 +1,8 @@
 {
-  "productId": "acme-workflow-engine",
-  "requiredTier": "standard",
-  "requiredFeatures": [],
-  "bindingMode": "None",
-  "cacheTtlSeconds": 86400,
-  "revocationModel": "ValidityByRenewal",
-  "version": "1.0.0"
+  "$schema": "../policies/schemas/license-policy.schema.json",
+  "productId": "elsa-core",
+  "version": "1.0.0",
+  "bindingMode": "none",
+  "cacheTtl": 86400,
+  "revocationModel": "none"
 }

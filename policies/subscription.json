@@ -1,9 +1,10 @@
 {
-  "productId": "acme-data-platform",
+  "$schema": "../policies/schemas/license-policy.schema.json",
+  "productId": "elsa-cloud",
+  "version": "1.0.0",
   "requiredTier": "professional",
-  "requiredFeatures": ["real-time-sync"],
-  "bindingMode": "Environment",
-  "cacheTtlSeconds": 3600,
-  "revocationModel": "ValidityByRenewal",
-  "version": "1.0.0"
+  "requiredFeatures": ["cloud-sync"],
+  "bindingMode": "environment",
+  "cacheTtl": 3600,
+  "revocationModel": "on-chain"
 }
