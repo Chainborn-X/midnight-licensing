@@ -98,7 +98,7 @@ These fixtures can be used in .NET integration tests:
 [Fact]
 public async Task LoadProofEnvelope_ValidFixture_ShouldSucceed()
 {
-    var fixtureePath = Path.Combine(
+    var fixturePath = Path.Combine(
         TestContext.RepositoryRoot,
         "tests/fixtures/valid-proof-envelope.json"
     );
