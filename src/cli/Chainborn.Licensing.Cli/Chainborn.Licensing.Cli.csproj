@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <Description>Proof generator CLI for Chainborn licensing platform</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\sdk\Chainborn.Licensing.Abstractions\Chainborn.Licensing.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>

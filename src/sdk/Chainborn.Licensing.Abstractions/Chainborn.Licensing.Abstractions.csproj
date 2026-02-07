@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Core abstractions and interfaces for Chainborn licensing platform</Description>
+    <PackageTags>licensing;midnight;blockchain;zk-proofs</PackageTags>
+  </PropertyGroup>
+
+</Project>

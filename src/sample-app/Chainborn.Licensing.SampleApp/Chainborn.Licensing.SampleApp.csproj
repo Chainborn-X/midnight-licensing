@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Description>Sample application demonstrating license validation</Description>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\validator\Chainborn.Licensing.Validator\Chainborn.Licensing.Validator.csproj" />
+  </ItemGroup>
+
+</Project>
