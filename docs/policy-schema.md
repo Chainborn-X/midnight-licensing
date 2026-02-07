@@ -289,7 +289,7 @@ The `LicenseValidator` consumes the policy at runtime to enforce validation rule
 
 ```json
 {
-  "$schema": "../policies/schemas/license-policy.schema.json",
+  "$schema": "schemas/license-policy.schema.json",
   "productId": "elsa-core",
   "version": "1.0.0",
   "bindingMode": "none",
@@ -315,7 +315,7 @@ The `LicenseValidator` consumes the policy at runtime to enforce validation rule
 
 ```json
 {
-  "$schema": "../policies/schemas/license-policy.schema.json",
+  "$schema": "schemas/license-policy.schema.json",
   "productId": "elsa-enterprise",
   "version": "1.0.0",
   "requiredTier": "enterprise",
@@ -343,7 +343,7 @@ The `LicenseValidator` consumes the policy at runtime to enforce validation rule
 
 ```json
 {
-  "$schema": "../policies/schemas/license-policy.schema.json",
+  "$schema": "schemas/license-policy.schema.json",
   "productId": "elsa-cloud",
   "version": "1.0.0",
   "requiredTier": "professional",

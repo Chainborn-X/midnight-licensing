@@ -1,5 +1,5 @@
 {
-  "$schema": "../policies/schemas/license-policy.schema.json",
+  "$schema": "schemas/license-policy.schema.json",
   "productId": "elsa-cloud",
   "version": "1.0.0",
   "requiredTier": "professional",
