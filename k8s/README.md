@@ -87,9 +87,12 @@ Edit the ConfigMap section in `validator-deployment.yaml`:
 data:
   my-product.json: |
     {
+      "$schema": "https://chainborn.io/schemas/license-policy.schema.json",
       "productId": "my-product",
-      "minimumTier": "enterprise",
-      "cacheTTL": "01:00:00"
+      "version": "1.0.0",
+      "bindingMode": "environment",
+      "cacheTtl": 3600,
+      "revocationModel": "none"
     }
 ```
 

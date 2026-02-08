@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile
-    image: chainborn/validator:latest
+    image: chainborn-sample-app:latest
     container_name: chainborn-validator
     ports:
       - "8080:8080"
@@ -20,12 +20,8 @@ services:
       - ASPNETCORE_ENVIRONMENT=Production
       - Licensing__CacheDirectory=/var/chainborn/cache
       - Licensing__PolicyDirectory=/etc/chainborn/policies
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+    # Healthcheck removed - curl not available in aspnet:8.0 runtime image
+    # Configure healthcheck in orchestration layer if needed
     restart: unless-stopped
 
 volumes:

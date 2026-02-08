@@ -20,7 +20,9 @@ metadata:
     component: cache
 spec:
   accessModes:
-    - ReadWriteMany  # Allows multiple pods to share cache (use ReadWriteOnce for single pod)
+    # ReadWriteOnce for single-pod or RWO storage classes
+    # Change to ReadWriteMany if using shared storage (NFS, CephFS, etc.)
+    - ReadWriteOnce
   storageClassName: standard  # Update to match your cluster's storage class
   resources:
     requests:
@@ -43,10 +45,12 @@ data:
   # Example policy (replace with actual policy files):
   example-product.json: |
     {
+      "$schema": "https://chainborn.io/schemas/license-policy.schema.json",
       "productId": "example-product",
-      "minimumTier": "standard",
-      "cacheTTL": "01:00:00",
-      "bindingMode": "device"
+      "version": "1.0.0",
+      "bindingMode": "organization",
+      "cacheTtl": 3600,
+      "revocationModel": "none"
     }
 
 ---
@@ -79,7 +83,8 @@ spec:
       containers:
         - name: validator
           image: chainborn/validator:latest
-          imagePullPolicy: Always
+          # Use IfNotPresent for dev/examples; set to Always for production with CI/CD
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 8080

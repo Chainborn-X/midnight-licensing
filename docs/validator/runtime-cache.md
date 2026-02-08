@@ -2,14 +2,18 @@
 
 ## Overview
 
-The Chainborn Licensing Validator uses a file-based validation cache to store validation results and reduce expensive proof verification operations. In containerized environments, proper cache volume configuration is critical for:
+The Chainborn Licensing Validator uses an in-memory validation cache (`InMemoryValidationCache`) to store validation results and reduce expensive proof verification operations. The `CacheDirectory` option (`/var/chainborn/cache`) is reserved for future file-based cache implementations.
+
+**Current State**: The default cache is in-memory and does not persist across restarts. To enable persistent caching, you must implement and register a custom `IValidationCache` that uses the `CacheDirectory` (e.g., a file-based or Redis-backed implementation).
+
+**Future Work**: A file-based cache implementation is planned. Once available, proper volume configuration will be critical for:
 
 - **Performance**: Avoid re-verifying proofs after container restarts
 - **Resiliency**: Maintain validation state during rolling deployments
 - **Audit trails**: Preserve validation history for compliance and debugging
 - **Cost optimization**: Reduce computational overhead in high-traffic scenarios
 
-By default, the cache directory is located at `/var/chainborn/cache` inside the container. Without volume mounting, this cache is ephemeral and lost when containers are recreated.
+By default, the cache directory is located at `/var/chainborn/cache` inside the container and can be configured via `LicenseValidationOptions.CacheDirectory`. The current implementation uses an in-memory cache that does not utilize this directory. Volume mounting is preparation for future file-based cache implementations.
 
 ## Cache Directory Configuration
 
@@ -124,7 +128,7 @@ spec:
       storage: 10Gi
 ```
 
-**Note**: Use `ReadWriteMany` if running multiple validator replicas. For single-pod deployments, `ReadWriteOnce` is sufficient.
+**Note**: Use `ReadWriteOnce` for single-pod deployments or when your storage class doesn't support `ReadWriteMany`. Use `ReadWriteMany` only if running multiple validator replicas with a storage class that supports shared access (NFS, CephFS, Azure Files, etc.).
 
 #### 2. Create Deployment with Volume Mount
 
@@ -207,13 +211,10 @@ volumes:
 # Create namespace
 kubectl create namespace chainborn
 
-# Apply PVC
-kubectl apply -f k8s/validator-pvc.yaml
-
 # Create ConfigMap for policies
 kubectl create configmap validator-policies --from-file=policies/ -n chainborn
 
-# Deploy validator
+# Deploy validator (includes PVC, deployment, service)
 kubectl apply -f k8s/validator-deployment.yaml
 
 # Check status
@@ -341,8 +342,6 @@ spec:
    resources:
      requests:
        storage: 10Gi
-     limits:
-       storage: 20Gi
    ```
 
 2. **Implement cache cleanup strategy**:
@@ -351,9 +350,11 @@ spec:
    find /var/chainborn/cache -type f -mtime +7 -delete
    ```
 
-3. **Configure cache TTL** in application:
-   ```csharp
-   options.DefaultCacheTTL = TimeSpan.FromHours(24);
+3. **Configure cache TTL** in your policy files:
+   ```json
+   {
+     "cacheTtl": 86400
+   }
    ```
 
 4. **Monitor disk usage**:

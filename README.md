@@ -105,10 +105,10 @@ npm test
 
 #### Using Docker Compose (Recommended)
 
-The easiest way to run the validator with persistent cache:
+The easiest way to build and run the sample validator application with persistent cache:
 
 ```bash
-# Start the validator service
+# Build and start the validator service (builds from local Dockerfile)
 docker-compose up -d
 
 # View logs
@@ -122,6 +122,7 @@ docker-compose down
 ```
 
 The `docker-compose.yml` configuration includes:
+- Builds the sample app from `src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile`
 - Persistent cache volume at `/var/chainborn/cache`
 - Policy directory mounted from `./policies`
 - Health checks and auto-restart
