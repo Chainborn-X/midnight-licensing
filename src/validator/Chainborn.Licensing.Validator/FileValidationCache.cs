@@ -17,6 +17,8 @@ public class FileValidationCache : IValidationCache
     private readonly int _maxEntries;
     private readonly ILogger<FileValidationCache>? _logger;
     private readonly SemaphoreSlim _lock = new(1, 1);
+    
+    // Maps filename (hash) to metadata for LRU tracking
     private readonly ConcurrentDictionary<string, CacheMetadata> _metadata = new();
     private bool _isInitialized;
 
@@ -67,8 +69,8 @@ public class FileValidationCache : IValidationCache
                 return null;
             }
 
-            // Update access time for LRU tracking
-            if (_metadata.TryGetValue(cacheKey, out var metadata))
+            // Update access time for LRU tracking (use filename as key)
+            if (_metadata.TryGetValue(fileName, out var metadata))
             {
                 metadata.LastAccessedAt = DateTimeOffset.UtcNow;
             }
@@ -111,8 +113,8 @@ public class FileValidationCache : IValidationCache
             // Atomic move
             File.Move(tempPath, filePath, overwrite: true);
 
-            // Update metadata
-            _metadata[cacheKey] = new CacheMetadata
+            // Update metadata (use filename as key for consistent lookup)
+            _metadata[fileName] = new CacheMetadata
             {
                 FileName = fileName,
                 CreatedAt = DateTimeOffset.UtcNow,
@@ -143,7 +145,8 @@ public class FileValidationCache : IValidationCache
                 File.Delete(filePath);
             }
 
-            _metadata.TryRemove(cacheKey, out _);
+            // Remove from metadata (use filename as key)
+            _metadata.TryRemove(fileName, out _);
             _logger?.LogDebug("Cache entry invalidated for key {CacheKey}", cacheKey);
         }
         catch (Exception ex)
@@ -212,8 +215,8 @@ public class FileValidationCache : IValidationCache
                         // Check if entry is still valid
                         if (entry.ExpiresAt > DateTimeOffset.UtcNow)
                         {
-                            var cacheKey = GetCacheKeyFromFileName(fileInfo.Name);
-                            _metadata[cacheKey] = new CacheMetadata
+                            // Use filename as the key in metadata for consistent lookup
+                            _metadata[fileInfo.Name] = new CacheMetadata
                             {
                                 FileName = fileInfo.Name,
                                 CreatedAt = fileInfo.CreationTimeUtc,
@@ -263,9 +266,9 @@ public class FileValidationCache : IValidationCache
                 .OrderBy(kvp => kvp.Value.LastAccessedAt)
                 .FirstOrDefault();
 
-            if (lruEntry.Key != null)
+            if (!string.IsNullOrEmpty(lruEntry.Key))
             {
-                var filePath = Path.Combine(_cacheDirectory, lruEntry.Value.FileName);
+                var filePath = Path.Combine(_cacheDirectory, lruEntry.Key);
                 
                 try
                 {
@@ -275,11 +278,11 @@ public class FileValidationCache : IValidationCache
                     }
 
                     _metadata.TryRemove(lruEntry.Key, out _);
-                    _logger?.LogDebug("Evicted LRU cache entry for key {CacheKey}", lruEntry.Key);
+                    _logger?.LogDebug("Evicted LRU cache entry: {FileName}", lruEntry.Key);
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogWarning(ex, "Error evicting cache entry for key {CacheKey}", lruEntry.Key);
+                    _logger?.LogWarning(ex, "Error evicting cache entry: {FileName}", lruEntry.Key);
                 }
             }
         }
@@ -295,14 +298,6 @@ public class FileValidationCache : IValidationCache
         var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(cacheKey));
         var hash = Convert.ToHexString(hashBytes).ToLowerInvariant();
         return $"{hash}.json";
-    }
-
-    private static string GetCacheKeyFromFileName(string fileName)
-    {
-        // For metadata loading, we use the filename itself as a pseudo cache key
-        // since we can't reverse the hash. This is fine since we don't need the original key
-        // for LRU tracking - we just need a unique identifier.
-        return fileName.Replace(".json", "");
     }
 
     private record CacheEntry(LicenseValidationResult Result, DateTimeOffset ExpiresAt);
