@@ -1,0 +1,85 @@
+version: '3.8'
+
+# Example Docker Compose configuration for Chainborn Licensing Sample App
+# Demonstrates persistent file-based cache across container restarts
+
+services:
+  sample-app:
+    build:
+      context: .
+      dockerfile: src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile
+    container_name: chainborn-sample-app
+    ports:
+      - "8080:8080"
+    environment:
+      # Configure file-based cache
+      - Licensing__CacheDirectory=/var/chainborn/cache
+      - Licensing__MaxCacheEntries=100
+      
+      # Policy configuration
+      - Licensing__PolicyDirectory=/etc/chainborn/policies
+      
+      # ASP.NET Core configuration
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+    
+    volumes:
+      # Persistent cache volume - survives container restarts
+      - license-cache:/var/chainborn/cache
+      
+      # Policy files (read-only) - mount from host
+      - ./policies:/etc/chainborn/policies:ro
+      
+      # Optional: Mount sample proof files for testing
+      # - ./proofs:/etc/chainborn/proofs:ro
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  # Named volume for persistent cache storage
+  # Data persists even when container is removed
+  license-cache:
+    driver: local
+    # Optional: Use specific host path
+    # driver_opts:
+    #   type: none
+    #   device: /path/on/host/cache
+    #   o: bind
+
+# Testing persistence:
+# 
+# 1. Start the application:
+#    docker-compose up -d
+#
+# 2. Perform validations to populate cache:
+#    curl http://localhost:8080/health
+#
+# 3. Restart container:
+#    docker-compose restart sample-app
+#
+# 4. Validations should now hit cache (check logs for cache hits)
+#
+# 5. Inspect cache contents:
+#    docker exec chainborn-sample-app ls -la /var/chainborn/cache
+#
+# 6. Stop and remove container (cache persists):
+#    docker-compose down
+#
+# 7. Start again (cache is still there):
+#    docker-compose up -d
+#
+# 8. Remove volume (deletes cache):
+#    docker-compose down -v

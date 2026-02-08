@@ -94,13 +94,11 @@ Task InvalidateAsync(
     CancellationToken cancellationToken = default)
 ```
 
-**Current Implementation**: `InMemoryValidationCache` (thread-safe in-memory dictionary)
+**Implementations**:
+- `InMemoryValidationCache` (thread-safe in-memory dictionary) - for development and single-instance deployments
+- `FileValidationCache` (persistent file-based cache) - for production and containerized environments with durability across restarts
 
-**Future Implementation**:
-- Persistent caching solution (Redis, distributed cache, or file-based cache)
-- Cache eviction policies and memory limits for production use
-- Cache warming strategies for frequently validated products
-- See TODOs in `Mocks/InMemoryValidationCache.cs`
+For detailed information on caching architecture, configuration, and Docker integration, see [Runtime Cache Documentation](./runtime-cache.md).
 
 ## Validation Flow
 
@@ -212,7 +210,8 @@ services.AddLicenseValidation(options => { /* ... */ });
 ## Future Work
 
 - [ ] Implement real ZK proof verification (blocked by spike-003-zk-proof-dotnet)
-- [ ] Implement persistent caching solution (Redis or distributed cache)
+- [x] Implement persistent file-based caching solution (completed)
+- [ ] Implement distributed cache solution (Redis)
 - [ ] Add policy enforcement for tier and feature requirements (blocked by Midnight proof format)
 - [ ] Add revocation checking (blocked by revocation model design)
 - [ ] Add telemetry and metrics for validation operations
