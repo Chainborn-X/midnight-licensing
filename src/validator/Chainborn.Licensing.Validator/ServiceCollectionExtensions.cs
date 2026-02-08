@@ -3,6 +3,7 @@ using Chainborn.Licensing.Policy;
 using Chainborn.Licensing.Validator.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Chainborn.Licensing.Validator;
 
@@ -32,7 +33,21 @@ public static class ServiceCollectionExtensions
         // These can be overridden by calling code before calling AddLicenseValidation
         services.TryAddSingleton<IPolicyProvider>(sp =>
             new JsonPolicyProvider(options.PolicyDirectory));
-        services.TryAddSingleton<IValidationCache, InMemoryValidationCache>();
+        
+        // Use FileValidationCache if cache directory is specified, otherwise use InMemoryValidationCache
+        services.TryAddSingleton<IValidationCache>(sp =>
+        {
+            if (!string.IsNullOrWhiteSpace(options.CacheDirectory))
+            {
+                var logger = sp.GetService<ILogger<FileValidationCache>>();
+                return new FileValidationCache(options.CacheDirectory, options.MaxCacheEntries, logger);
+            }
+            else
+            {
+                return new InMemoryValidationCache();
+            }
+        });
+        
         services.TryAddSingleton<IProofVerifier, MockProofVerifier>();
         services.TryAddSingleton<IProofLoader, ProofLoader>();
         

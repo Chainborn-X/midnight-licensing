@@ -13,9 +13,15 @@ public class LicenseValidationOptions
     public string PolicyDirectory { get; set; } = "/etc/chainborn/policies";
 
     /// <summary>
-    /// Directory for caching validation results.
+    /// Directory for caching validation results. Set to null to use in-memory cache.
     /// </summary>
     public string? CacheDirectory { get; set; } = "/var/chainborn/cache";
+
+    /// <summary>
+    /// Maximum number of cache entries for file-based cache. Uses LRU eviction policy.
+    /// Default is 100 entries.
+    /// </summary>
+    public int MaxCacheEntries { get; set; } = 100;
 
     /// <summary>
     /// Default strictness mode for validation.
