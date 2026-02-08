@@ -285,20 +285,26 @@ services.AddSingleton<IBindingDataCollector, CustomBindingDataCollector>();
 
 ### Combining with Default Collector
 
-Extend the default collector:
+Wrap the default collector:
 
 ```csharp
-public class ExtendedBindingDataCollector : BindingDataCollector
+public class ExtendedBindingDataCollector : IBindingDataCollector
 {
-    public ExtendedBindingDataCollector(ILogger<BindingDataCollector> logger)
-        : base(logger)
+    private readonly BindingDataCollector _defaultCollector;
+    private readonly ILogger<ExtendedBindingDataCollector> _logger;
+
+    public ExtendedBindingDataCollector(
+        BindingDataCollector defaultCollector,
+        ILogger<ExtendedBindingDataCollector> logger)
     {
+        _defaultCollector = defaultCollector;
+        _logger = logger;
     }
 
-    public override async Task<IReadOnlyDictionary<string, string>> CollectAsync(
+    public async Task<IReadOnlyDictionary<string, string>> CollectAsync(
         CancellationToken cancellationToken = default)
     {
-        var baseData = await base.CollectAsync(cancellationToken);
+        var baseData = await _defaultCollector.CollectAsync(cancellationToken);
         var extended = new Dictionary<string, string>(baseData);
         
         // Add additional data
@@ -306,7 +312,21 @@ public class ExtendedBindingDataCollector : BindingDataCollector
         
         return extended;
     }
+
+    private string GetCustomValue()
+    {
+        // Your custom logic here
+        return "custom-value";
+    }
 }
+```
+
+Register the extended collector:
+
+```csharp
+services.AddSingleton<ExtendedBindingDataCollector>();
+services.AddSingleton<IBindingDataCollector>(sp => 
+    sp.GetRequiredService<ExtendedBindingDataCollector>());
 ```
 
 ## Security Considerations
