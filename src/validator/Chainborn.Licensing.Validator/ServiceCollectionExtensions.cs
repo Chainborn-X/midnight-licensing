@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
             new JsonPolicyProvider(options.PolicyDirectory));
         services.TryAddSingleton<IValidationCache, InMemoryValidationCache>();
         services.TryAddSingleton<IProofVerifier, MockProofVerifier>();
+        services.TryAddSingleton<IProofLoader, ProofLoader>();
         
         services.AddSingleton<ILicenseValidator, LicenseValidator>();
 
