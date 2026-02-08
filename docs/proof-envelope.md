@@ -119,6 +119,10 @@ Example:
 
 ##### `challenge.expiresAt` (string, ISO 8601)
 
+The absolute expiry time for this proof's challenge. After this time, the proof is no longer valid, regardless of cache TTL.
+
+**Cache Behavior**: The validator enforces a TTL invariant where cached validation results expire at `min(challenge.expiresAt, validatedAt + policy.cacheTtl)`. This ensures that expired proofs are never served from cache. See [Runtime Cache Architecture](runtime-cache.md) for details.
+
 Example:
 
 ```json

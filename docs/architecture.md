@@ -65,9 +65,9 @@ Everything above that layer (policy evaluation, caching, binding checks, TTL enf
 
 5. **Cached Result**
    - Successful validations cached with TTL
-   - Cache survives container restarts (file-based)
+   - Cache respects critical TTL invariant: `ExpiresAt ≤ min(challenge.ExpiresAt, validatedAt + policy.CacheTtl)`
    - Reduces proof verification overhead
-   - Respects license expiry and policy TTL
+   - See [Runtime Cache Architecture](runtime-cache.md) for detailed cache behavior and invariant enforcement
 
 ## Bridge Point
 
