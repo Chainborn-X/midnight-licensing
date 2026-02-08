@@ -201,9 +201,20 @@ public class LicenseValidatorTests
             now.AddMinutes(20),
             "cache-key"
         );
+        var policy = new LicensePolicy(
+            "test-product",
+            "standard",
+            Array.Empty<string>(),
+            BindingMode.None,
+            TimeSpan.FromMinutes(30),
+            RevocationModel.ValidityByRenewal,
+            "1.0.0"
+        );
 
         _mockCache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<LicenseValidationResult?>(cachedResult));
+        _mockPolicyProvider.GetPolicyAsync("test-product", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<LicensePolicy?>(policy));
 
         // Act
         var result = await _validator.ValidateAsync(proof, context);
@@ -218,6 +229,40 @@ public class LicenseValidatorTests
             Arg.Any<byte[]>(),
             Arg.Any<ProofChallenge>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ValidateAsync_WithCachedResult_PolicyNotFound_TreatsAsCacheMiss()
+    {
+        // Arrange
+        var now = DateTimeOffset.UtcNow;
+        var challenge = new ProofChallenge("test-nonce", now.AddMinutes(-5), now.AddHours(1));
+        var proof = new LicenseProof(
+            new byte[] { 1, 2, 3 },
+            new byte[] { 4, 5, 6 },
+            "test-product",
+            challenge
+        );
+        var context = new ValidationContext("test-product");
+        var cachedResult = new LicenseValidationResult(
+            true,
+            Array.Empty<string>(),
+            now.AddMinutes(-10),
+            now.AddMinutes(20),
+            "cache-key"
+        );
+
+        _mockCache.GetAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<LicenseValidationResult?>(cachedResult));
+        _mockPolicyProvider.GetPolicyAsync("test-product", Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<LicensePolicy?>(null)); // Policy not found
+
+        // Act
+        var result = await _validator.ValidateAsync(proof, context);
+
+        // Assert: Should fall through to Step 2 which also returns policy not found error
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.Contains("Policy not found"));
     }
 
     [Fact]
@@ -451,5 +496,8 @@ public class LicenseValidatorTests
         Assert.NotEmpty(result.Errors);
         var errorMessage = string.Join(" ", result.Errors);
         Assert.Contains("Cache invariant violation", errorMessage);
+        
+        // Verify cache entry was invalidated to prevent repeated failures
+        await _mockCache.Received(1).InvalidateAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

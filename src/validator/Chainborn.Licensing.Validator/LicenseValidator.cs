@@ -56,7 +56,13 @@ public class LicenseValidator : ILicenseValidator
             // Step 1.1: Verify cache invariant before returning cached result
             // Get policy to validate cache TTL invariant
             var policyForCacheValidation = await _policyProvider.GetPolicyAsync(context.ProductId, cancellationToken);
-            if (policyForCacheValidation != null)
+            if (policyForCacheValidation == null)
+            {
+                // If policy is not found, treat as cache miss and fall through to normal validation
+                // This ensures consistent behavior between cache hit and cache miss paths
+                _logger.LogWarning("Policy not found during cache validation for product {ProductId}, treating as cache miss", context.ProductId);
+            }
+            else
             {
                 var maxAllowedExpiry = CalculateExpiresAt(proof.Challenge.ExpiresAt, cachedResult.ValidatedAt, policyForCacheValidation.CacheTtl);
                 
@@ -73,6 +79,10 @@ public class LicenseValidator : ILicenseValidator
                         cachedResult.ValidatedAt,
                         policyForCacheValidation.CacheTtl);
                     
+                    // Invalidate the corrupted cache entry to prevent repeated failures
+                    await _validationCache.InvalidateAsync(cacheKey, cancellationToken);
+                    _logger.LogInformation("Invalidated corrupted cache entry for product {ProductId}", context.ProductId);
+                    
                     return new LicenseValidationResult(
                         IsValid: false,
                         Errors: new[] { 
@@ -83,10 +93,10 @@ public class LicenseValidator : ILicenseValidator
                         ValidatedAt: now
                     );
                 }
+                
+                _logger.LogInformation("Returning cached validation result for product {ProductId}", context.ProductId);
+                return cachedResult;
             }
-
-            _logger.LogInformation("Returning cached validation result for product {ProductId}", context.ProductId);
-            return cachedResult;
         }
 
         // Step 2: Get policy

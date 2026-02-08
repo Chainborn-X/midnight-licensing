@@ -66,7 +66,13 @@ if (cachedResult != null && cachedResult.ExpiresAt > now)
 {
     // Verify cache invariant before returning cached result
     var policyForCacheValidation = await _policyProvider.GetPolicyAsync(context.ProductId, cancellationToken);
-    if (policyForCacheValidation != null)
+    if (policyForCacheValidation == null)
+    {
+        // If policy is not found, treat as cache miss and fall through to normal validation
+        // This ensures consistent behavior between cache hit and cache miss paths
+        _logger.LogWarning("Policy not found during cache validation, treating as cache miss");
+    }
+    else
     {
         var maxAllowedExpiry = CalculateExpiresAt(
             proof.Challenge.ExpiresAt,
@@ -77,15 +83,28 @@ if (cachedResult != null && cachedResult.ExpiresAt > now)
         if (cachedResult.ExpiresAt > maxAllowedExpiry)
         {
             _logger.LogError("Cache invariant violation detected...");
+            
+            // Invalidate the corrupted cache entry to prevent repeated failures
+            await _validationCache.InvalidateAsync(cacheKey, cancellationToken);
+            
             return new LicenseValidationResult(IsValid: false, ...);
         }
+        
+        return cachedResult;
     }
-    
-    return cachedResult;
 }
 ```
 
-If the invariant is violated (which should never happen in normal operation), validation fails with a clear error message. This defensive check protects against:
+**Key behaviors:**
+
+1. **Policy lookup failure**: If the policy cannot be found during cache validation, the system treats it as a cache miss and falls through to normal validation. This ensures consistent behavior between cache hit and cache miss paths.
+
+2. **Invariant violation**: If the invariant is violated (which should never happen in normal operation), the validator:
+   - Logs an error with full diagnostic information
+   - **Invalidates the corrupted cache entry** to prevent repeated failures and allow the system to self-heal
+   - Returns an invalid validation result with a clear error message
+
+This defensive check protects against:
 
 - Bugs in cache implementation
 - Manual cache corruption
@@ -241,6 +260,19 @@ public async Task ValidateAsync_CachedResult_WithInvalidExpiresAt_Fails()
 {
     // Simulates a corrupted cache entry with ExpiresAt > maxAllowedExpiry
     // Result: Validation fails with "Cache invariant violation" error
+    // Verifies that the corrupted cache entry is invalidated to prevent repeated failures
+}
+```
+
+### Test: Policy Not Found During Cache Hit
+
+```csharp
+[Fact]
+public async Task ValidateAsync_WithCachedResult_PolicyNotFound_TreatsAsCacheMiss()
+{
+    // Simulates policy lookup failure during cache hit
+    // Result: Falls through to normal validation (cache miss behavior)
+    // Ensures consistent handling between cache hit and cache miss paths
 }
 ```
 
