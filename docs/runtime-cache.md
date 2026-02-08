@@ -131,7 +131,7 @@ Cache keys are deterministic and include:
 - Product ID
 - Challenge nonce
 - Strictness mode
-- Binding data (hashed if present)
+- Binding data (serialized and Base64-encoded if present)
 
 This ensures that different validation contexts produce different cache keys, preventing incorrect cache hits.
 
