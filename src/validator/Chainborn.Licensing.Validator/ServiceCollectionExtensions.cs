@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IValidationCache, InMemoryValidationCache>();
         services.TryAddSingleton<IProofVerifier, MockProofVerifier>();
         services.TryAddSingleton<IProofLoader, ProofLoader>();
+        services.TryAddSingleton<IBindingDataCollector, BindingDataCollector>();
         
         services.AddSingleton<ILicenseValidator, LicenseValidator>();
 
