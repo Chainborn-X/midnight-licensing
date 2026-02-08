@@ -77,67 +77,68 @@ spec:
       securityContext:
         fsGroup: 1654  # Set group ownership for mounted volumes
       containers:
-      - name: validator
-        image: chainborn/validator:latest
-        imagePullPolicy: Always
-        ports:
-        - name: http
-          containerPort: 8080
-          protocol: TCP
-        env:
-        - name: ASPNETCORE_URLS
-          value: "http://+:8080"
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Production"
-        - name: Licensing__CacheDirectory
-          value: "/var/chainborn/cache"
-        - name: Licensing__PolicyDirectory
-          value: "/etc/chainborn/policies"
-        volumeMounts:
-        - name: cache-volume
-          mountPath: /var/chainborn/cache
-        - name: policy-volume
-          mountPath: /etc/chainborn/policies
-          readOnly: true
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
-        resources:
-          requests:
-            cpu: 250m
-            memory: 512Mi
-          limits:
-            cpu: 1000m
-            memory: 1Gi
-        securityContext:
-          runAsUser: 1654
-          runAsGroup: 1654
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false  # Set to true if cache uses external storage
-          capabilities:
-            drop:
-            - ALL
+        - name: validator
+          image: chainborn/validator:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: ASPNETCORE_URLS
+              value: "http://+:8080"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+            - name: Licensing__CacheDirectory
+              value: "/var/chainborn/cache"
+            - name: Licensing__PolicyDirectory
+              value: "/etc/chainborn/policies"
+          volumeMounts:
+            - name: cache-volume
+              mountPath: /var/chainborn/cache
+            - name: policy-volume
+              mountPath: /etc/chainborn/policies
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          securityContext:
+            runAsUser: 1654
+            runAsGroup: 1654
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            # Set to true if cache uses external storage
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
       volumes:
-      - name: cache-volume
-        persistentVolumeClaim:
-          claimName: validator-cache-pvc
-      - name: policy-volume
-        configMap:
-          name: validator-policies
+        - name: cache-volume
+          persistentVolumeClaim:
+            claimName: validator-cache-pvc
+        - name: policy-volume
+          configMap:
+            name: validator-policies
 
 ---
 # Service to expose validator pods
@@ -153,10 +154,10 @@ spec:
   selector:
     app: validator
   ports:
-  - name: http
-    protocol: TCP
-    port: 80
-    targetPort: 8080
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
   sessionAffinity: None
 
 ---
@@ -176,15 +177,15 @@ spec:
   minReplicas: 3
   maxReplicas: 10
   metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
