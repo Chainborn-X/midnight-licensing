@@ -1,0 +1,21 @@
+{
+  "$schema": "../../policies/schemas/proof-envelope.schema.json",
+  "version": "1.0.0",
+  "proofBytes": "ZXhwaXJlZFByb29mQnl0ZXNFeGFtcGxlMTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=",
+  "verificationKeyBytes": "ZXhwaXJlZFZlcmlmaWNhdGlvbktleUJ5dGVzMTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcA==",
+  "productId": "chainborn-sample-app",
+  "challenge": {
+    "nonce": "ZXhwaXJlZE5vbmNl",
+    "issuedAt": "2026-01-01T00:00:00.000Z",
+    "expiresAt": "2026-01-02T00:00:00.000Z"
+  },
+  "metadata": {
+    "generatedAt": "2026-01-01T12:00:00.000Z",
+    "proofServerVersion": "0.15.0",
+    "tier": "community",
+    "features": [
+      "basic-access"
+    ],
+    "customerId": "customer-expired-001"
+  }
+}
