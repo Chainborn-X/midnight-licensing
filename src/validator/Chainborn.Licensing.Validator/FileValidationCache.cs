@@ -144,7 +144,8 @@ public class FileValidationCache : IValidationCache
         try
         {
             // Determine whether this is a new cache entry or an update to an existing one
-            var isNewEntry = !_metadata.ContainsKey(fileName);
+            // Check if file exists as it's more reliable than metadata (which may not be loaded yet)
+            var isNewEntry = !File.Exists(filePath);
 
             // Only evict if adding a new entry could increase the total count
             if (isNewEntry)

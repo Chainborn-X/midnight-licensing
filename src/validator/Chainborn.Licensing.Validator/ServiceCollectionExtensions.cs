@@ -48,7 +48,7 @@ public static class ServiceCollectionExtensions
                 {
                     // If FileValidationCache fails to initialize, fall back to InMemoryValidationCache
                     var loggerFactory = sp.GetService<ILoggerFactory>();
-                    var logger = loggerFactory?.CreateLogger("Chainborn.Licensing.Validator.ServiceCollectionExtensions");
+                    var logger = loggerFactory?.CreateLogger(typeof(ServiceCollectionExtensions).FullName ?? "Chainborn.Licensing.Validator");
                     logger?.LogWarning(ex, "Failed to initialize FileValidationCache, falling back to InMemoryValidationCache");
                     return new InMemoryValidationCache();
                 }
