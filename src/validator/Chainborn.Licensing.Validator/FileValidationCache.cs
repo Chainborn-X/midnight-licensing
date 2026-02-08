@@ -21,6 +21,7 @@ public class FileValidationCache : IValidationCache
     // Maps filename (hash) to metadata for LRU tracking
     private readonly ConcurrentDictionary<string, CacheMetadata> _metadata = new();
     private bool _isInitialized;
+    private bool _isDisabled; // Set to true if cache initialization fails
 
     /// <summary>
     /// Creates a new FileValidationCache instance.
@@ -42,6 +43,11 @@ public class FileValidationCache : IValidationCache
     {
         await EnsureInitializedAsync(cancellationToken);
 
+        if (_isDisabled)
+        {
+            return null;
+        }
+
         var fileName = GetFileName(cacheKey);
         var filePath = Path.Combine(_cacheDirectory, fileName);
 
@@ -52,16 +58,47 @@ public class FileValidationCache : IValidationCache
                 return null;
             }
 
-            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
-            var entry = await JsonSerializer.DeserializeAsync<CacheEntry>(stream, cancellationToken: cancellationToken);
-
-            if (entry == null)
+            CacheEntry? entry;
+            
+            // Read and deserialize the entry
+            try
             {
-                _logger?.LogWarning("Failed to deserialize cache entry from {FilePath}", filePath);
+                await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+                entry = await JsonSerializer.DeserializeAsync<CacheEntry>(stream, cancellationToken: cancellationToken);
+            }
+            catch (JsonException ex)
+            {
+                _logger?.LogWarning(ex, "Corrupted cache entry at {FilePath}, deleting", filePath);
+                // Delete corrupted file to prevent repeated errors
+                try
+                {
+                    File.Delete(filePath);
+                    _metadata.TryRemove(fileName, out _);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger?.LogWarning(deleteEx, "Failed to delete corrupted cache entry at {FilePath}", filePath);
+                }
                 return null;
             }
 
-            // Check TTL - remove expired entries
+            if (entry == null)
+            {
+                _logger?.LogWarning("Failed to deserialize cache entry from {FilePath}, deleting", filePath);
+                // Delete corrupted file to prevent repeated errors
+                try
+                {
+                    File.Delete(filePath);
+                    _metadata.TryRemove(fileName, out _);
+                }
+                catch (Exception deleteEx)
+                {
+                    _logger?.LogWarning(deleteEx, "Failed to delete corrupted cache entry at {FilePath}", filePath);
+                }
+                return null;
+            }
+
+            // Check TTL - remove expired entries (file is now closed, safe to delete)
             if (entry.ExpiresAt <= DateTimeOffset.UtcNow)
             {
                 _logger?.LogDebug("Cache entry expired for key {CacheKey}", cacheKey);
@@ -93,18 +130,30 @@ public class FileValidationCache : IValidationCache
     {
         await EnsureInitializedAsync(cancellationToken);
 
+        if (_isDisabled)
+        {
+            return;
+        }
+
         var fileName = GetFileName(cacheKey);
         var filePath = Path.Combine(_cacheDirectory, fileName);
         var expiresAt = DateTimeOffset.UtcNow + ttl;
         var entry = new CacheEntry(result, expiresAt);
 
+        string? tempPath = null;
         try
         {
-            // Check if we need to evict entries
-            await EvictIfNeededAsync(cancellationToken);
+            // Determine whether this is a new cache entry or an update to an existing one
+            var isNewEntry = !_metadata.ContainsKey(fileName);
+
+            // Only evict if adding a new entry could increase the total count
+            if (isNewEntry)
+            {
+                await EvictIfNeededAsync(cancellationToken);
+            }
 
             // Write to a temporary file first, then move to avoid partial writes
-            var tempPath = filePath + ".tmp";
+            tempPath = filePath + ".tmp";
             await using (var stream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
             {
                 await JsonSerializer.SerializeAsync(stream, entry, cancellationToken: cancellationToken);
@@ -112,6 +161,7 @@ public class FileValidationCache : IValidationCache
 
             // Atomic move
             File.Move(tempPath, filePath, overwrite: true);
+            tempPath = null; // Successfully moved, no need to clean up
 
             // Update metadata (use filename as key for consistent lookup)
             _metadata[fileName] = new CacheMetadata
@@ -129,11 +179,34 @@ public class FileValidationCache : IValidationCache
             _logger?.LogError(ex, "Error writing cache entry for key {CacheKey}", cacheKey);
             // Fail gracefully - cache is best-effort
         }
+        finally
+        {
+            // Clean up temp file if it still exists (write failed)
+            if (tempPath != null)
+            {
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        File.Delete(tempPath);
+                    }
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger?.LogWarning(cleanupEx, "Failed to clean up temporary file {TempPath}", tempPath);
+                }
+            }
+        }
     }
 
     public async Task InvalidateAsync(string cacheKey, CancellationToken cancellationToken = default)
     {
         await EnsureInitializedAsync(cancellationToken);
+
+        if (_isDisabled)
+        {
+            return;
+        }
 
         var fileName = GetFileName(cacheKey);
         var filePath = Path.Combine(_cacheDirectory, fileName);
@@ -180,12 +253,15 @@ public class FileValidationCache : IValidationCache
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Failed to create cache directory at {CacheDirectory}. Cache will be unavailable.", _cacheDirectory);
-                    throw;
+                    // Directory creation failed; log and gracefully disable file-based caching
+                    _logger?.LogError(ex, "Failed to create cache directory at {CacheDirectory}. File-based cache will be disabled.", _cacheDirectory);
+                    _isDisabled = true;
+                    _isInitialized = true;
+                    return;
                 }
             }
 
-            // Load existing cache metadata
+            // Load existing cache metadata and clean up stale temp files
             await LoadMetadataAsync(cancellationToken);
 
             _isInitialized = true;
@@ -200,6 +276,21 @@ public class FileValidationCache : IValidationCache
     {
         try
         {
+            // Clean up stale temporary files from interrupted writes
+            var tempFiles = Directory.GetFiles(_cacheDirectory, "*.tmp");
+            foreach (var tempFile in tempFiles)
+            {
+                try
+                {
+                    File.Delete(tempFile);
+                    _logger?.LogDebug("Deleted stale temporary file {TempFile}", tempFile);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to delete stale temporary file {TempFile}", tempFile);
+                }
+            }
+
             var files = Directory.GetFiles(_cacheDirectory, "*.json");
             
             foreach (var filePath in files)
@@ -207,12 +298,32 @@ public class FileValidationCache : IValidationCache
                 try
                 {
                     var fileInfo = new FileInfo(filePath);
-                    await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
-                    var entry = await JsonSerializer.DeserializeAsync<CacheEntry>(stream, cancellationToken: cancellationToken);
+                    CacheEntry? entry;
+                    
+                    // Read and close the stream before any file operations
+                    try
+                    {
+                        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+                        entry = await JsonSerializer.DeserializeAsync<CacheEntry>(stream, cancellationToken: cancellationToken);
+                    }
+                    catch (JsonException ex)
+                    {
+                        _logger?.LogWarning(ex, "Corrupted cache entry at {FilePath}, deleting", filePath);
+                        // Delete corrupted file
+                        try
+                        {
+                            File.Delete(filePath);
+                        }
+                        catch (Exception deleteEx)
+                        {
+                            _logger?.LogWarning(deleteEx, "Failed to delete corrupted cache entry at {FilePath}", filePath);
+                        }
+                        continue;
+                    }
 
                     if (entry != null)
                     {
-                        // Check if entry is still valid
+                        // Check if entry is still valid (stream is now closed, safe to delete)
                         if (entry.ExpiresAt > DateTimeOffset.UtcNow)
                         {
                             // Use filename as the key in metadata for consistent lookup
@@ -226,8 +337,15 @@ public class FileValidationCache : IValidationCache
                         }
                         else
                         {
-                            // Delete expired entry
-                            File.Delete(filePath);
+                            // Delete expired entry (stream is now closed, safe to delete)
+                            try
+                            {
+                                File.Delete(filePath);
+                            }
+                            catch (Exception deleteEx)
+                            {
+                                _logger?.LogWarning(deleteEx, "Failed to delete expired cache entry at {FilePath}", filePath);
+                            }
                         }
                     }
                 }

@@ -39,8 +39,19 @@ public static class ServiceCollectionExtensions
         {
             if (!string.IsNullOrWhiteSpace(options.CacheDirectory))
             {
-                var logger = sp.GetService<ILogger<FileValidationCache>>();
-                return new FileValidationCache(options.CacheDirectory, options.MaxCacheEntries, logger);
+                try
+                {
+                    var logger = sp.GetService<ILogger<FileValidationCache>>();
+                    return new FileValidationCache(options.CacheDirectory, options.MaxCacheEntries, logger);
+                }
+                catch (Exception ex)
+                {
+                    // If FileValidationCache fails to initialize, fall back to InMemoryValidationCache
+                    var loggerFactory = sp.GetService<ILoggerFactory>();
+                    var logger = loggerFactory?.CreateLogger("Chainborn.Licensing.Validator.ServiceCollectionExtensions");
+                    logger?.LogWarning(ex, "Failed to initialize FileValidationCache, falling back to InMemoryValidationCache");
+                    return new InMemoryValidationCache();
+                }
             }
             else
             {

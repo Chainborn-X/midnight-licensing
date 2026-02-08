@@ -196,14 +196,14 @@ public class FileValidationCacheTests : IDisposable
                 CacheKey: $"key-{i}"
             );
             await smallCache.SetAsync($"key-{i}", result, TimeSpan.FromHours(1));
-            await Task.Delay(10); // Ensure different access times
+            await Task.Delay(100); // Use a larger delay to ensure different access times across environments
         }
 
         // Access key-1 and key-2 to make key-0 the LRU
         await smallCache.GetAsync("key-1");
-        await Task.Delay(10);
+        await Task.Delay(100);
         await smallCache.GetAsync("key-2");
-        await Task.Delay(10);
+        await Task.Delay(100);
 
         // Act - add a 4th entry, should evict key-0
         var newResult = new LicenseValidationResult(
