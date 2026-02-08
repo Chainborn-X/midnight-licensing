@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using Chainborn.Licensing.Abstractions;
 using Xunit;
@@ -83,7 +82,6 @@ public class ProofEnvelopeTests
     {
         // Arrange
         var fixturePath = Path.Combine(FixturesPath, "valid-proof-envelope.json");
-        var originalJson = File.ReadAllText(fixturePath);
         
         // Act - Load and re-serialize
         var envelope = LoadProofEnvelope(fixturePath);
@@ -107,12 +105,6 @@ public class ProofEnvelopeTests
 
     private static LicenseProof DeserializeProofEnvelope(string json)
     {
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
 

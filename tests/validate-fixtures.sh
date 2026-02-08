@@ -17,20 +17,23 @@ if ! command -v ajv &> /dev/null; then
 fi
 
 # Validate valid-proof-envelope.json
-echo "✓ Validating tests/fixtures/valid-proof-envelope.json"
+echo "Validating tests/fixtures/valid-proof-envelope.json..."
 ajv validate \
     -s "$REPO_ROOT/policies/schemas/proof-envelope.schema.json" \
     -d "$REPO_ROOT/tests/fixtures/valid-proof-envelope.json" \
     --spec=draft7 \
     -c ajv-formats
+echo "✓ tests/fixtures/valid-proof-envelope.json validated successfully"
+echo
 
 # Validate expired-proof-envelope.json
-echo "✓ Validating tests/fixtures/expired-proof-envelope.json"
+echo "Validating tests/fixtures/expired-proof-envelope.json..."
 ajv validate \
     -s "$REPO_ROOT/policies/schemas/proof-envelope.schema.json" \
     -d "$REPO_ROOT/tests/fixtures/expired-proof-envelope.json" \
     --spec=draft7 \
     -c ajv-formats
+echo "✓ tests/fixtures/expired-proof-envelope.json validated successfully"
 
 echo
 echo "All fixtures validated successfully!"

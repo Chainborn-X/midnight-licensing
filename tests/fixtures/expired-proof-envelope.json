@@ -1,5 +1,5 @@
 {
-  "$schema": "../../../policies/schemas/proof-envelope.schema.json",
+  "$schema": "../../policies/schemas/proof-envelope.schema.json",
   "version": "1.0.0",
   "proofBytes": "ZXhwaXJlZFByb29mQnl0ZXNFeGFtcGxlMTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcHFyc3R1dnd4eXo=",
   "verificationKeyBytes": "ZXhwaXJlZFZlcmlmaWNhdGlvbktleUJ5dGVzMTIzNDU2Nzg5MGFiY2RlZmdoaWprbG1ub3BxcnN0dXZ3eHl6QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5YWJjZGVmZ2hpamtsbW5vcA==",

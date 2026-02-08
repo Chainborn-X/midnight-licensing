@@ -174,7 +174,7 @@ Optional customer identifier for tracking and support purposes.
 
 ```json
 {
-  "$schema": "../../../policies/schemas/proof-envelope.schema.json",
+  "$schema": "../policies/schemas/proof-envelope.schema.json",
   "version": "1.0.0",
   "proofBytes": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8w...",
   "verificationKeyBytes": "gIGCg4SFhoeIiYqLjI2Oj5CRkpOUlZaXmJmam5ydnp+goaKjpKWmp6ipqqusra6v...",
@@ -241,10 +241,10 @@ The proof envelope can be loaded from multiple sources in order of precedence:
 
 ### 1. Environment Variable: `LICENSE_PROOF`
 
-Recommended for Kubernetes secrets and simple Docker deployments:
+Recommended for Kubernetes secrets and simple Docker deployments. The value should be **inline JSON** (not base64-encoded):
 
 ```bash
-# Load proof inline
+# Load proof inline (JSON string)
 docker run -e LICENSE_PROOF='{"proofBytes":"...","verificationKeyBytes":"..."}' myapp:latest
 
 # Load from file in shell
@@ -402,13 +402,15 @@ kubectl create deployment myapp \
 All proof envelopes should be validated against the JSON schema:
 
 ```bash
-# Install a JSON schema validator (example: ajv-cli)
-npm install -g ajv-cli
+# Install a JSON schema validator (example: ajv-cli with ajv-formats for date-time validation)
+npm install -g ajv-cli ajv-formats
 
 # Validate a proof envelope
 ajv validate \
   -s policies/schemas/proof-envelope.schema.json \
-  -d tests/fixtures/valid-proof-envelope.json
+  -d tests/fixtures/valid-proof-envelope.json \
+  --spec=draft7 \
+  -c ajv-formats
 
 # Should output: valid
 ```

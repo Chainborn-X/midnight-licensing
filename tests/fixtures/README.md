@@ -73,7 +73,7 @@ When creating new test fixtures:
 
 ```json
 {
-  "$schema": "../../../policies/schemas/proof-envelope.schema.json",
+  "$schema": "../../policies/schemas/proof-envelope.schema.json",
   "version": "1.0.0",
   "proofBytes": "<base64-encoded-proof>",
   "verificationKeyBytes": "<base64-encoded-vk>",
@@ -92,9 +92,10 @@ When creating new test fixtures:
 
 ## Integration with .NET Tests
 
-These fixtures can be used in .NET integration tests:
+These fixtures can be used in .NET integration tests. The following examples show the planned API for issue #13 (not yet implemented):
 
 ```csharp
+// Example: Planned ProofEnvelopeLoader API (issue #13 - TODO)
 [Fact]
 public async Task LoadProofEnvelope_ValidFixture_ShouldSucceed()
 {
@@ -109,6 +110,7 @@ public async Task LoadProofEnvelope_ValidFixture_ShouldSucceed()
     Assert.Equal("chainborn-sample-app", envelope.ProductId);
 }
 
+// Example: Validating expired challenges
 [Fact]
 public async Task ValidateProof_ExpiredChallenge_ShouldFail()
 {
@@ -125,6 +127,9 @@ public async Task ValidateProof_ExpiredChallenge_ShouldFail()
 }
 ```
 
+**Note:** The `ProofEnvelopeLoader` class will be implemented as part of issue #13. The current `ProofEnvelopeTests.cs` demonstrates manual deserialization for validation purposes.
+
+
 ## Security Notes
 
 ⚠️ **These are test fixtures only!**
@@ -136,5 +141,5 @@ public async Task ValidateProof_ExpiredChallenge_ShouldFail()
 
 ## Related Documentation
 
-- [Proof Envelope Format Documentation](../docs/proof-envelope.md)
-- [Proof Envelope JSON Schema](../policies/schemas/proof-envelope.schema.json)
+- [Proof Envelope Format Documentation](../../docs/proof-envelope.md)
+- [Proof Envelope JSON Schema](../../policies/schemas/proof-envelope.schema.json)
