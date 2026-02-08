@@ -13,7 +13,7 @@ The Chainborn Licensing Validator uses an in-memory validation cache (`InMemoryV
 - **Audit trails**: Preserve validation history for compliance and debugging
 - **Cost optimization**: Reduce computational overhead in high-traffic scenarios
 
-By default, the cache directory is located at `/var/chainborn/cache` inside the container and can be configured via `LicenseValidationOptions.CacheDirectory`. The current implementation uses an in-memory cache that does not utilize this directory. Volume mounting is preparation for future file-based cache implementations.
+By default, the cache directory is located at `/var/chainborn/cache` inside the container and can be configured via `LicenseValidationOptions.CacheDirectory`. The current implementation uses an in-memory cache that does not utilize this directory. Volume mounting prepares for future file-based cache implementations.
 
 ## Cache Directory Configuration
 
