@@ -103,24 +103,74 @@ npm test
 
 ### Docker
 
-Build the Docker image from the repository root:
+#### Using Docker Compose (Recommended)
+
+The easiest way to run the validator with persistent cache:
+
+```bash
+# Start the validator service
+docker-compose up -d
+
+# View logs
+docker-compose logs -f validator
+
+# Test the health endpoint
+curl http://localhost:8080/health
+
+# Stop the service (cache persists)
+docker-compose down
+```
+
+The `docker-compose.yml` configuration includes:
+- Persistent cache volume at `/var/chainborn/cache`
+- Policy directory mounted from `./policies`
+- Health checks and auto-restart
+
+See [Runtime Cache Documentation](docs/validator/runtime-cache.md) for detailed cache configuration and Kubernetes deployment.
+
+#### Manual Docker Build
+
+Build and run the Docker image manually:
 
 ```bash
 # Build the sample application Docker image
 docker build -f src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile -t chainborn-sample-app .
 
-# Run the containerized application
-docker run -p 8080:8080 chainborn-sample-app
+# Run with volume mounts for cache persistence
+docker run -p 8080:8080 \
+  -v $(pwd)/cache:/var/chainborn/cache \
+  -v $(pwd)/policies:/etc/chainborn/policies:ro \
+  chainborn-sample-app
 
 # Test the health endpoint
 curl http://localhost:8080/health
 ```
+
+### Kubernetes
+
+Deploy to Kubernetes with persistent cache:
+
+```bash
+# Deploy the validator with PersistentVolumeClaim
+kubectl apply -f k8s/validator-deployment.yaml
+
+# Check deployment status
+kubectl get pods -n chainborn
+kubectl logs -f deployment/validator -n chainborn
+
+# Port forward to test locally
+kubectl port-forward svc/validator-service 8080:80 -n chainborn
+curl http://localhost:8080/health
+```
+
+See [Runtime Cache Documentation](docs/validator/runtime-cache.md) for complete Kubernetes setup instructions.
 
 ## Documentation
 
 - [Product Requirements Specification](docs/prs.md) - Detailed requirements and success criteria
 - [Architecture](docs/architecture.md) - Technical architecture and bridge point design
 - [Proof Envelope Format](docs/proof-envelope.md) - Canonical JSON format for license proofs
+- [Runtime Cache Persistence](docs/validator/runtime-cache.md) - Docker and Kubernetes cache volume configuration
 - [Spike Documentation](docs/spikes/) - Research findings from Milestone 1 spike issues
   - [Spike #1: License Policy Schema](docs/spikes/spike-001-policy-schema.md)
   - [Spike #2: Wallet Interaction Model](docs/spikes/spike-002-wallet-interaction.md)

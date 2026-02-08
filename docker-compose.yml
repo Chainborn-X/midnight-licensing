@@ -1,0 +1,35 @@
+services:
+  validator:
+    build:
+      context: .
+      dockerfile: src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile
+    image: chainborn/validator:latest
+    container_name: chainborn-validator
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistent cache directory for validation results
+      # Ensures cache survives container restarts
+      - validator-cache:/var/chainborn/cache
+      
+      # Policy directory mounted from local filesystem
+      # Use read-only to prevent accidental modifications
+      - ./policies:/etc/chainborn/policies:ro
+    environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Licensing__CacheDirectory=/var/chainborn/cache
+      - Licensing__PolicyDirectory=/etc/chainborn/policies
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+volumes:
+  # Named volume for persistent cache storage
+  # Survives 'docker-compose down' (removed only with 'docker-compose down -v')
+  validator-cache:
+    driver: local
