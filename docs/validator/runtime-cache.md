@@ -350,10 +350,14 @@ spec:
    find /var/chainborn/cache -type f -mtime +7 -delete
    ```
 
-3. **Configure cache TTL** in your policy files:
+3. **Configure cache TTL** in your policy files (example shows relevant field):
    ```json
    {
-     "cacheTtl": 86400
+     "productId": "my-product",
+     "version": "1.0.0",
+     "bindingMode": "organization",
+     "cacheTtl": 86400,
+     "revocationModel": "none"
    }
    ```
 
