@@ -58,6 +58,37 @@ public class BindingComparator : IBindingComparator
         return new BindingValidationResult(isValid, errors);
     }
 
+    /// <summary>
+    /// Handles stub mode validation when public inputs are not available yet.
+    /// Returns true if stub mode applies (validation should pass), false if strict validation should proceed.
+    /// </summary>
+    private bool HandleStubModeValidation(
+        string bindingModeName,
+        IReadOnlyDictionary<string, string>? bindingData,
+        IReadOnlyDictionary<string, string>? publicInputs)
+    {
+        if (publicInputs == null || publicInputs.Count == 0)
+        {
+            // Public inputs not available yet - proof format not finalized
+            if (bindingData == null || bindingData.Count == 0)
+            {
+                _logger.LogWarning(
+                    "{BindingMode} binding mode: binding data not collected. " +
+                    "This will be enforced once ZK proof format is finalized.", bindingModeName);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "{BindingMode} binding validation: proof public inputs not available yet. " +
+                    "Validation will be enforced once ZK proof format is finalized. " +
+                    "Collected {Count} binding data fields.", bindingModeName, bindingData.Count);
+            }
+            return true; // Stub mode - allow validation to pass
+        }
+
+        return false; // Strict mode - proceed with validation
+    }
+
     private void ValidateOrganizationBinding(
         IReadOnlyDictionary<string, string>? bindingData,
         IReadOnlyDictionary<string, string>? publicInputs,
@@ -73,25 +104,9 @@ public class BindingComparator : IBindingComparator
         // 3. Compare bindingData["org_id"] with publicInputs["org_id"]
         // 4. Fail validation if they don't match
 
-        if (publicInputs == null || publicInputs.Count == 0)
+        if (HandleStubModeValidation("Organization", bindingData, publicInputs))
         {
-            // Public inputs not available yet - proof format not finalized
-            // Just verify that binding data was collected (for Organization mode)
-            if (bindingData == null || bindingData.Count == 0)
-            {
-                _logger.LogWarning(
-                    "Organization binding mode: binding data not collected. " +
-                    "This will be enforced once ZK proof format is finalized.");
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "Organization binding validation: proof public inputs not available yet. " +
-                    "Validation will be enforced once ZK proof format is finalized. " +
-                    "Collected {Count} binding data fields.", bindingData.Count);
-            }
-            // For now, we allow this to pass until proof format is finalized
-            return;
+            return; // Stub mode - allow validation to pass
         }
 
         // Public inputs are available - enforce strict validation
@@ -149,25 +164,9 @@ public class BindingComparator : IBindingComparator
         // 3. Compare bindingData["environment_id"] with publicInputs["environment_id"]
         // 4. Fail validation if they don't match
 
-        if (publicInputs == null || publicInputs.Count == 0)
+        if (HandleStubModeValidation("Environment", bindingData, publicInputs))
         {
-            // Public inputs not available yet - proof format not finalized
-            // Just verify that binding data was collected (for Environment mode)
-            if (bindingData == null || bindingData.Count == 0)
-            {
-                _logger.LogWarning(
-                    "Environment binding mode: binding data not collected. " +
-                    "This will be enforced once ZK proof format is finalized.");
-            }
-            else
-            {
-                _logger.LogWarning(
-                    "Environment binding validation: proof public inputs not available yet. " +
-                    "Validation will be enforced once ZK proof format is finalized. " +
-                    "Collected {Count} binding data fields.", bindingData.Count);
-            }
-            // For now, we allow this to pass until proof format is finalized
-            return;
+            return; // Stub mode - allow validation to pass
         }
 
         // Public inputs are available - enforce strict validation
