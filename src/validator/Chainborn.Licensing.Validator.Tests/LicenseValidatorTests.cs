@@ -412,6 +412,7 @@ public class LicenseValidatorTests
             _mockProofVerifier,
             _mockPolicyProvider,
             realCache,
+            _mockBindingDataCollector,
             _mockLogger
         );
 
