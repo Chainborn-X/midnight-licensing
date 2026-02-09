@@ -12,6 +12,7 @@ public class LicenseValidator : ILicenseValidator
     private readonly IPolicyProvider _policyProvider;
     private readonly IValidationCache _validationCache;
     private readonly IBindingDataCollector _bindingDataCollector;
+    private readonly IBindingComparator _bindingComparator;
     private readonly ILogger<LicenseValidator> _logger;
 
     public LicenseValidator(
@@ -19,12 +20,14 @@ public class LicenseValidator : ILicenseValidator
         IPolicyProvider policyProvider,
         IValidationCache validationCache,
         IBindingDataCollector bindingDataCollector,
+        IBindingComparator bindingComparator,
         ILogger<LicenseValidator> logger)
     {
         _proofVerifier = proofVerifier ?? throw new ArgumentNullException(nameof(proofVerifier));
         _policyProvider = policyProvider ?? throw new ArgumentNullException(nameof(policyProvider));
         _validationCache = validationCache ?? throw new ArgumentNullException(nameof(validationCache));
         _bindingDataCollector = bindingDataCollector ?? throw new ArgumentNullException(nameof(bindingDataCollector));
+        _bindingComparator = bindingComparator ?? throw new ArgumentNullException(nameof(bindingComparator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -155,12 +158,30 @@ public class LicenseValidator : ILicenseValidator
             );
         }
 
-        // Step 5: Validate policy requirements (tier, features)
+        // Step 5: Validate binding mode requirements
+        var bindingValidationResult = _bindingComparator.Validate(
+            policy.BindingMode,
+            context.BindingData,
+            verificationResult.PublicInputs
+        );
+
+        if (!bindingValidationResult.IsValid)
+        {
+            _logger.LogWarning("Binding validation failed for product {ProductId}: {Errors}",
+                context.ProductId, string.Join("; ", bindingValidationResult.Errors));
+            return new LicenseValidationResult(
+                IsValid: false,
+                Errors: bindingValidationResult.Errors.ToArray(),
+                ValidatedAt: now
+            );
+        }
+
+        // Step 6: Validate policy requirements (tier, features)
         // TODO: This requires knowing the public input format from Midnight proofs
         // For now, we log that this validation is pending
         _logger.LogInformation("Policy validation for tier and features is pending Midnight proof format definition");
 
-        // Step 6: Build successful result
+        // Step 7: Build successful result
         var expiresAt = CalculateExpiresAt(proof.Challenge.ExpiresAt, now, policy.CacheTtl);
         var result = new LicenseValidationResult(
             IsValid: true,
@@ -170,7 +191,7 @@ public class LicenseValidator : ILicenseValidator
             CacheKey: cacheKey
         );
 
-        // Step 7: Cache the result
+        // Step 8: Cache the result
         await _validationCache.SetAsync(cacheKey, result, policy.CacheTtl, cancellationToken);
         
         _logger.LogInformation("License validation successful for product {ProductId}, expires at {ExpiresAt}", 
