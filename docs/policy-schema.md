@@ -82,11 +82,27 @@ Cache time-to-live in seconds for successful validation results.
 - Successful validations are cached to avoid repeated proof verification overhead
 - After TTL expires, proof must be re-verified
 - Balances performance (longer TTL) vs. revocation responsiveness (shorter TTL)
-- Should be shorter than proof expiry time
-- Consider revocation model when setting TTL:
-  - `revocationModel: "none"` → Can use longer TTL (e.g., 24 hours)
-  - `revocationModel: "on-chain"` → Should use shorter TTL (e.g., 1 hour)
-  - `revocationModel: "periodic-check"` → Moderate TTL (e.g., 12 hours)
+- Should be shorter than typical proof expiry times
+
+**Interaction with Proof Expiry**:
+
+The validator enforces a critical **cache TTL invariant**: cached validation results expire at the **minimum** of:
+1. Proof challenge expiry: `challenge.expiresAt`
+2. Cache TTL bound: `validatedAt + policy.cacheTtl`
+
+This ensures that:
+- **Short-lived proofs** are never cached longer than they're valid
+- **Long-lived proofs** still get re-validated periodically per policy
+
+**Example 1**: Proof expires in 10 minutes, `cacheTtl` is 30 minutes → cached result expires in 10 minutes  
+**Example 2**: Proof expires in 2 hours, `cacheTtl` is 15 minutes → cached result expires in 15 minutes
+
+See [Runtime Cache Architecture](runtime-cache.md) for detailed cache behavior.
+
+**Revocation Model Considerations**:
+- `revocationModel: "none"` → Can use longer TTL (e.g., 24 hours)
+- `revocationModel: "on-chain"` → Should use shorter TTL (e.g., 1 hour)
+- `revocationModel: "periodic-check"` → Moderate TTL (e.g., 12 hours)
 
 ---
 

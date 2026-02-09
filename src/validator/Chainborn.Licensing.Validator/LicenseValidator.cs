@@ -11,17 +11,20 @@ public class LicenseValidator : ILicenseValidator
     private readonly IProofVerifier _proofVerifier;
     private readonly IPolicyProvider _policyProvider;
     private readonly IValidationCache _validationCache;
+    private readonly IBindingDataCollector _bindingDataCollector;
     private readonly ILogger<LicenseValidator> _logger;
 
     public LicenseValidator(
         IProofVerifier proofVerifier,
         IPolicyProvider policyProvider,
         IValidationCache validationCache,
+        IBindingDataCollector bindingDataCollector,
         ILogger<LicenseValidator> logger)
     {
         _proofVerifier = proofVerifier ?? throw new ArgumentNullException(nameof(proofVerifier));
         _policyProvider = policyProvider ?? throw new ArgumentNullException(nameof(policyProvider));
         _validationCache = validationCache ?? throw new ArgumentNullException(nameof(validationCache));
+        _bindingDataCollector = bindingDataCollector ?? throw new ArgumentNullException(nameof(bindingDataCollector));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -53,8 +56,50 @@ public class LicenseValidator : ILicenseValidator
         var cachedResult = await _validationCache.GetAsync(cacheKey, cancellationToken);
         if (cachedResult != null && cachedResult.ExpiresAt > now)
         {
-            _logger.LogInformation("Returning cached validation result for product {ProductId}", context.ProductId);
-            return cachedResult;
+            // Step 1.1: Verify cache invariant before returning cached result
+            // Get policy to validate cache TTL invariant
+            var policyForCacheValidation = await _policyProvider.GetPolicyAsync(context.ProductId, cancellationToken);
+            if (policyForCacheValidation == null)
+            {
+                // If policy is not found, treat as cache miss and fall through to normal validation
+                // This ensures consistent behavior between cache hit and cache miss paths
+                _logger.LogWarning("Policy not found during cache validation for product {ProductId}, treating as cache miss", context.ProductId);
+            }
+            else
+            {
+                var maxAllowedExpiry = CalculateExpiresAt(proof.Challenge.ExpiresAt, cachedResult.ValidatedAt, policyForCacheValidation.CacheTtl);
+                
+                if (cachedResult.ExpiresAt > maxAllowedExpiry)
+                {
+                    _logger.LogError(
+                        "Cache invariant violation detected for product {ProductId}: " +
+                        "cached ExpiresAt ({CachedExpiresAt}) exceeds maximum allowed ({MaxAllowedExpiry}). " +
+                        "Challenge expires at {ChallengeExpiresAt}, validated at {ValidatedAt}, cache TTL is {CacheTtl}",
+                        context.ProductId,
+                        cachedResult.ExpiresAt,
+                        maxAllowedExpiry,
+                        proof.Challenge.ExpiresAt,
+                        cachedResult.ValidatedAt,
+                        policyForCacheValidation.CacheTtl);
+                    
+                    // Invalidate the corrupted cache entry to prevent repeated failures
+                    await _validationCache.InvalidateAsync(cacheKey, cancellationToken);
+                    _logger.LogInformation("Invalidated corrupted cache entry for product {ProductId}", context.ProductId);
+                    
+                    return new LicenseValidationResult(
+                        IsValid: false,
+                        Errors: new[] { 
+                            $"Cache invariant violation: cached result expires at {cachedResult.ExpiresAt:O} " +
+                            $"but maximum allowed expiry is {maxAllowedExpiry:O} " +
+                            $"(min of challenge expiry {proof.Challenge.ExpiresAt:O} and cache TTL bound {cachedResult.ValidatedAt + policyForCacheValidation.CacheTtl:O})"
+                        },
+                        ValidatedAt: now
+                    );
+                }
+                
+                _logger.LogInformation("Returning cached validation result for product {ProductId}", context.ProductId);
+                return cachedResult;
+            }
         }
 
         // Step 2: Get policy
@@ -67,6 +112,16 @@ public class LicenseValidator : ILicenseValidator
                 Errors: new[] { $"Policy not found for product '{context.ProductId}'" },
                 ValidatedAt: now
             );
+        }
+
+        // Step 2a: Populate binding data if binding mode requires it
+        if (policy.BindingMode != BindingMode.None && (context.BindingData == null || context.BindingData.Count == 0))
+        {
+            _logger.LogDebug("Collecting binding data for binding mode: {BindingMode}", policy.BindingMode);
+            var collectedBindingData = await _bindingDataCollector.CollectAsync(cancellationToken);
+            context = context with { BindingData = collectedBindingData };
+            _logger.LogInformation("Collected {Count} binding data fields for product {ProductId}", 
+                collectedBindingData.Count, context.ProductId);
         }
 
         // Step 3: Validate nonce (challenge) before expensive proof verification

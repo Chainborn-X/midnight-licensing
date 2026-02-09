@@ -3,6 +3,7 @@ using Chainborn.Licensing.Policy;
 using Chainborn.Licensing.Validator.Mocks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Chainborn.Licensing.Validator;
 
@@ -32,9 +33,35 @@ public static class ServiceCollectionExtensions
         // These can be overridden by calling code before calling AddLicenseValidation
         services.TryAddSingleton<IPolicyProvider>(sp =>
             new JsonPolicyProvider(options.PolicyDirectory));
-        services.TryAddSingleton<IValidationCache, InMemoryValidationCache>();
+        
+        // Use FileValidationCache if cache directory is specified, otherwise use InMemoryValidationCache
+        services.TryAddSingleton<IValidationCache>(sp =>
+        {
+            if (!string.IsNullOrWhiteSpace(options.CacheDirectory))
+            {
+                try
+                {
+                    var logger = sp.GetService<ILogger<FileValidationCache>>();
+                    return new FileValidationCache(options.CacheDirectory, options.MaxCacheEntries, logger);
+                }
+                catch (Exception ex)
+                {
+                    // If FileValidationCache fails to initialize, fall back to InMemoryValidationCache
+                    var loggerFactory = sp.GetService<ILoggerFactory>();
+                    var logger = loggerFactory?.CreateLogger(typeof(ServiceCollectionExtensions).FullName ?? "Chainborn.Licensing.Validator");
+                    logger?.LogWarning(ex, "Failed to initialize FileValidationCache, falling back to InMemoryValidationCache");
+                    return new InMemoryValidationCache();
+                }
+            }
+            else
+            {
+                return new InMemoryValidationCache();
+            }
+        });
+        
         services.TryAddSingleton<IProofVerifier, MockProofVerifier>();
         services.TryAddSingleton<IProofLoader, ProofLoader>();
+        services.TryAddSingleton<IBindingDataCollector, BindingDataCollector>();
         
         services.AddSingleton<ILicenseValidator, LicenseValidator>();
 

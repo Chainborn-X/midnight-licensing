@@ -1,31 +1,45 @@
 services:
-  validator:
+  sample-app:
     build:
       context: .
       dockerfile: src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile
     image: chainborn-sample-app:latest
-    container_name: chainborn-validator
+    container_name: chainborn-sample-app
     ports:
       - "8080:8080"
+    environment:
+      # ASP.NET Core configuration
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
+
+      # Licensing configuration
+      - Licensing__CacheDirectory=/var/chainborn/cache
+      - Licensing__MaxCacheEntries=100
+      - Licensing__PolicyDirectory=/etc/chainborn/policies
+
     volumes:
       # Persistent cache directory for validation results
       # Ensures cache survives container restarts
-      - validator-cache:/var/chainborn/cache
-      
-      # Policy directory mounted from local filesystem
-      # Use read-only to prevent accidental modifications
+      - license-cache:/var/chainborn/cache
+
+      # Policy directory mounted from local filesystem (read-only)
       - ./policies:/etc/chainborn/policies:ro
-    environment:
-      - ASPNETCORE_URLS=http://+:8080
-      - ASPNETCORE_ENVIRONMENT=Production
-      - Licensing__CacheDirectory=/var/chainborn/cache
-      - Licensing__PolicyDirectory=/etc/chainborn/policies
+
+      # Optional: Mount sample proof files for testing
+      # - ./proofs:/etc/chainborn/proofs:ro
+
     # Healthcheck removed - curl not available in aspnet:8.0 runtime image
-    # Configure healthcheck in orchestration layer if needed
+    # Configure healthcheck in orchestration layer, or add curl in Dockerfile if needed
     restart: unless-stopped
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   # Named volume for persistent cache storage
-  # Survives 'docker-compose down' (removed only with 'docker-compose down -v')
-  validator-cache:
+  # Survives 'docker compose down' (removed only with 'docker compose down -v')
+  license-cache:
     driver: local
