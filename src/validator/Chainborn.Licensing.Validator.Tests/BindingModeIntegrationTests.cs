@@ -14,6 +14,7 @@ public class BindingModeIntegrationTests
     private readonly IPolicyProvider _mockPolicyProvider;
     private readonly IValidationCache _mockCache;
     private readonly IBindingDataCollector _bindingDataCollector;
+    private readonly IBindingComparator _bindingComparator;
     private readonly ILogger<LicenseValidator> _mockLogger;
     private readonly LicenseValidator _validator;
 
@@ -23,6 +24,7 @@ public class BindingModeIntegrationTests
         _mockPolicyProvider = Substitute.For<IPolicyProvider>();
         _mockCache = Substitute.For<IValidationCache>();
         _bindingDataCollector = new BindingDataCollector(Substitute.For<ILogger<BindingDataCollector>>());
+        _bindingComparator = new BindingComparator(Substitute.For<ILogger<BindingComparator>>());
         _mockLogger = Substitute.For<ILogger<LicenseValidator>>();
         
         _validator = new LicenseValidator(
@@ -30,6 +32,7 @@ public class BindingModeIntegrationTests
             _mockPolicyProvider,
             _mockCache,
             _bindingDataCollector,
+            _bindingComparator,
             _mockLogger
         );
     }

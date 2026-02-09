@@ -62,6 +62,7 @@ public static class ServiceCollectionExtensions
         services.TryAddSingleton<IProofVerifier, MockProofVerifier>();
         services.TryAddSingleton<IProofLoader, ProofLoader>();
         services.TryAddSingleton<IBindingDataCollector, BindingDataCollector>();
+        services.TryAddSingleton<IBindingComparator, BindingComparator>();
         
         services.AddSingleton<ILicenseValidator, LicenseValidator>();
 

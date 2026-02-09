@@ -11,6 +11,7 @@ public class LicenseValidatorTests
     private readonly IPolicyProvider _mockPolicyProvider;
     private readonly IValidationCache _mockCache;
     private readonly IBindingDataCollector _mockBindingDataCollector;
+    private readonly IBindingComparator _mockBindingComparator;
     private readonly ILogger<LicenseValidator> _mockLogger;
     private readonly LicenseValidator _validator;
 
@@ -20,13 +21,22 @@ public class LicenseValidatorTests
         _mockPolicyProvider = Substitute.For<IPolicyProvider>();
         _mockCache = Substitute.For<IValidationCache>();
         _mockBindingDataCollector = Substitute.For<IBindingDataCollector>();
+        _mockBindingComparator = Substitute.For<IBindingComparator>();
         _mockLogger = Substitute.For<ILogger<LicenseValidator>>();
+        
+        // Setup binding comparator to return valid by default
+        _mockBindingComparator.Validate(
+                Arg.Any<BindingMode>(),
+                Arg.Any<IReadOnlyDictionary<string, string>>(),
+                Arg.Any<IReadOnlyDictionary<string, string>>())
+            .Returns(new BindingValidationResult(true, Array.Empty<string>()));
         
         _validator = new LicenseValidator(
             _mockProofVerifier,
             _mockPolicyProvider,
             _mockCache,
             _mockBindingDataCollector,
+            _mockBindingComparator,
             _mockLogger
         );
     }
@@ -412,6 +422,8 @@ public class LicenseValidatorTests
             _mockProofVerifier,
             _mockPolicyProvider,
             realCache,
+            _mockBindingDataCollector,
+            _mockBindingComparator,
             _mockLogger
         );
 
