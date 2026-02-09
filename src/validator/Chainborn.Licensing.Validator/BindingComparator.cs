@@ -128,7 +128,8 @@ public class BindingComparator : IBindingComparator
         }
 
         // Check if org_id is present in public inputs
-        if (!publicInputs.TryGetValue("org_id", out var proofOrgId) || string.IsNullOrWhiteSpace(proofOrgId))
+        // Note: publicInputs is not null here because HandleStubModeValidation would have returned early
+        if (!publicInputs!.TryGetValue("org_id", out var proofOrgId) || string.IsNullOrWhiteSpace(proofOrgId))
         {
             errors.Add("Proof does not contain required 'org_id' in public inputs");
             _logger.LogError("Organization binding validation failed: 'org_id' not found in proof public inputs");
@@ -188,7 +189,8 @@ public class BindingComparator : IBindingComparator
         }
 
         // Check if environment_id is present in public inputs
-        if (!publicInputs.TryGetValue("environment_id", out var proofEnvironmentId) || string.IsNullOrWhiteSpace(proofEnvironmentId))
+        // Note: publicInputs is not null here because HandleStubModeValidation would have returned early
+        if (!publicInputs!.TryGetValue("environment_id", out var proofEnvironmentId) || string.IsNullOrWhiteSpace(proofEnvironmentId))
         {
             errors.Add("Proof does not contain required 'environment_id' in public inputs");
             _logger.LogError("Environment binding validation failed: 'environment_id' not found in proof public inputs");
