@@ -30,16 +30,16 @@ Configure the file cache through `LicenseValidationOptions`:
 ```csharp
 services.AddLicenseValidation(options =>
 {
-    // Enable file-based cache (default behavior)
+    // Enable file-based cache
     options.CacheDirectory = "/var/chainborn/cache";
-    
+
     // Set maximum cache entries (default: 100)
     options.MaxCacheEntries = 100;
-    
+
     // To disable file cache and use in-memory instead:
     // options.CacheDirectory = null;
 });
-```
+````
 
 ### Directory Structure
 
@@ -70,36 +70,15 @@ Each file contains a cache entry:
 ### Cache Key Generation
 
 Cache keys are deterministically generated from:
-- Product ID
-- Challenge/Nonce
-- Binding data (if any)
-- Strictness mode
+
+* Product ID
+* Challenge/Nonce
+* Binding data (if any)
+* Strictness mode
 
 The key is then hashed using SHA256 to create a safe filename.
 
 ## Docker Integration
-
-### Basic Docker Setup
-
-When running in Docker, mount a volume to persist the cache directory:
-
-```dockerfile
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
-WORKDIR /app
-
-# Create cache directory
-RUN mkdir -p /var/chainborn/cache && \
-    chmod 755 /var/chainborn/cache
-
-# Copy application
-COPY --from=build /app/publish .
-
-# Set cache environment variable (optional)
-ENV Licensing__CacheDirectory=/var/chainborn/cache
-ENV Licensing__MaxCacheEntries=100
-
-ENTRYPOINT ["dotnet", "YourApp.dll"]
-```
 
 ### Docker Run
 
@@ -114,55 +93,32 @@ docker run -d \
 
 ### Docker Compose Example
 
-Complete example showing persistent cache across restarts:
-
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   sample-app:
     build:
       context: .
       dockerfile: src/sample-app/Chainborn.Licensing.SampleApp/Dockerfile
+    image: chainborn-sample-app:latest
+    container_name: chainborn-sample-app
     ports:
       - "8080:8080"
     environment:
+      - ASPNETCORE_URLS=http://+:8080
+      - ASPNETCORE_ENVIRONMENT=Production
       - Licensing__CacheDirectory=/var/chainborn/cache
       - Licensing__MaxCacheEntries=100
       - Licensing__PolicyDirectory=/etc/chainborn/policies
     volumes:
-      # Persistent cache volume
       - license-cache:/var/chainborn/cache
-      # Policy files (read-only)
       - ./policies:/etc/chainborn/policies:ro
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
-  # Named volume persists cache across container restarts
   license-cache:
     driver: local
-```
-
-**Testing Persistence:**
-
-```bash
-# Start the application
-docker-compose up -d
-
-# Perform some validations (cache will be populated)
-curl http://localhost:8080/validate
-
-# Restart the container
-docker-compose restart sample-app
-
-# Validations should now be served from cache
-# (no expensive proof verification)
-curl http://localhost:8080/validate
 ```
 
 ## Kubernetes Integration
@@ -199,119 +155,47 @@ spec:
         app: sample-app
     spec:
       containers:
-      - name: app
-        image: your-registry/sample-app:latest
-        env:
-        - name: Licensing__CacheDirectory
-          value: /var/chainborn/cache
-        - name: Licensing__MaxCacheEntries
-          value: "100"
-        volumeMounts:
-        - name: cache
-          mountPath: /var/chainborn/cache
-        - name: policies
-          mountPath: /etc/chainborn/policies
-          readOnly: true
+        - name: app
+          image: your-registry/sample-app:latest
+          env:
+            - name: Licensing__CacheDirectory
+              value: /var/chainborn/cache
+            - name: Licensing__MaxCacheEntries
+              value: "100"
+          volumeMounts:
+            - name: cache
+              mountPath: /var/chainborn/cache
+            - name: policies
+              mountPath: /etc/chainborn/policies
+              readOnly: true
       volumes:
-      - name: cache
-        persistentVolumeClaim:
-          claimName: license-cache-pvc
-      - name: policies
-        configMap:
-          name: license-policies
+        - name: cache
+          persistentVolumeClaim:
+            claimName: license-cache-pvc
+        - name: policies
+          configMap:
+            name: license-policies
 ```
 
 ### Multiple Replicas
 
-**Important**: The file-based cache is designed for single-instance deployments. For multi-replica deployments, consider:
+Important: the file-based cache is designed for single-instance deployments. For multi-replica deployments, consider:
 
-1. **Shared Storage**: Use ReadWriteMany (RWX) storage with proper locking (e.g., NFS, EFS)
-2. **Redis Cache**: Implement a distributed cache using Redis
-3. **Per-Pod Cache**: Use ReadWriteOnce (RWO) with pod affinity for session stickiness
-
-## Operational Considerations
-
-### Directory Permissions
-
-The application needs read/write permissions for the cache directory:
-
-```bash
-# Set ownership
-chown -R app:app /var/chainborn/cache
-
-# Set permissions
-chmod 755 /var/chainborn/cache
-```
-
-### Directory Creation
-
-The cache automatically creates the directory if it doesn't exist. If creation fails (e.g., due to permissions), the application will throw an exception on first cache access.
-
-### Graceful Degradation
-
-If the cache directory becomes unavailable (e.g., disk full, permissions changed), individual cache operations will log errors but won't crash the application. Validation will continue without caching.
-
-### Monitoring
-
-Key metrics to monitor:
-
-- **Cache Hit Rate**: Percentage of validations served from cache
-- **Cache Size**: Number of entries in the cache
-- **Eviction Count**: Number of LRU evictions
-- **Disk Usage**: Space used by cache directory
-- **File I/O Errors**: Failed read/write operations
-
-### Capacity Planning
-
-Calculate cache storage requirements:
-
-```
-Average Entry Size: ~1 KB (JSON file)
-Max Entries: 100 (configurable)
-Total Storage: ~100 KB
-Recommended: 10 MB (for overhead and growth)
-```
-
-For larger deployments:
-
-```
-Max Entries: 1000
-Total Storage: ~1 MB
-Recommended: 50 MB
-```
-
-## Cache Lifecycle
-
-### Startup
-
-1. Application starts
-2. Cache directory is checked/created
-3. Existing cache files are loaded
-4. Expired entries are removed
-5. Metadata index is built in memory
-
-### Runtime
-
-1. **Cache Miss**: Validation performs proof verification, result is cached
-2. **Cache Hit**: Validation returns cached result (if not expired)
-3. **TTL Expiry**: Expired entries are removed on read
-4. **LRU Eviction**: When max entries reached, least recently used entry is evicted
-
-### Shutdown
-
-Cache files remain on disk. No explicit cleanup needed.
+1. Shared storage: use ReadWriteMany (RWX) storage with proper locking (NFS, CephFS, Azure Files, etc.)
+2. Redis cache: implement a distributed cache using Redis
+3. Per-pod cache: use ReadWriteOnce (RWO) with pod affinity for session stickiness
 
 ## Comparison: In-Memory vs File-Based Cache
 
-| Feature | InMemoryValidationCache | FileValidationCache |
-|---------|------------------------|---------------------|
-| **Persistence** | No | Yes |
-| **Performance** | Fastest | Fast (async I/O) |
-| **Thread-Safe** | Yes (ConcurrentDictionary) | Yes (SemaphoreSlim) |
-| **Max Entries** | Unlimited (memory bound) | Configurable (LRU) |
-| **Docker Ready** | No | Yes |
-| **Multi-Instance** | No | No (requires shared storage) |
-| **Best For** | Development, testing | Production, containers |
+| Feature        | InMemoryValidationCache  | FileValidationCache                  |
+| -------------- | ------------------------ | ------------------------------------ |
+| Persistence    | No                       | Yes                                  |
+| Performance    | Fastest                  | Fast (async I/O)                     |
+| Thread-Safe    | Yes                      | Yes                                  |
+| Max Entries    | Unlimited (memory bound) | Configurable (LRU)                   |
+| Docker Ready   | No                       | Yes                                  |
+| Multi-Instance | No                       | No (unless shared storage + locking) |
+| Best For       | Development, testing     | Production, containers               |
 
 ## Switching Between Cache Implementations
 
@@ -320,7 +204,7 @@ Cache files remain on disk. No explicit cleanup needed.
 ```csharp
 services.AddLicenseValidation(options =>
 {
-    options.CacheDirectory = null; // Disables file cache
+    options.CacheDirectory = null;
 });
 ```
 
@@ -340,100 +224,5 @@ Implement `IValidationCache` and register before calling `AddLicenseValidation`:
 
 ```csharp
 services.AddSingleton<IValidationCache, RedisValidationCache>();
-services.AddLicenseValidation(options => { /* ... */ });
+services.AddLicenseValidation(options => { });
 ```
-
-## Security Considerations
-
-### File System Security
-
-- Cache directory should not be world-readable
-- Use appropriate user/group ownership
-- Consider encrypted storage for sensitive environments
-
-### Cache Key Collisions
-
-Cache keys include all validation factors (product ID, nonce, binding data, strictness mode) to prevent unauthorized cache hits.
-
-### TTL Enforcement
-
-TTL is enforced on every read operation. Even if a file exists, expired entries are never returned and are automatically deleted.
-
-## Troubleshooting
-
-### Cache Not Persisting
-
-**Symptom**: Cache is empty after container restart
-
-**Solutions**:
-- Verify volume mount is configured correctly
-- Check directory permissions
-- Ensure volume is not being deleted on restart
-
-### Permission Denied Errors
-
-**Symptom**: `System.UnauthorizedAccessException` on cache operations
-
-**Solutions**:
-- Verify application has write permissions to cache directory
-- Check SELinux/AppArmor policies in containerized environments
-- Ensure volume mount has correct permissions
-
-### Disk Full Errors
-
-**Symptom**: `System.IO.IOException: There is not enough space on the disk`
-
-**Solutions**:
-- Increase volume size
-- Reduce `MaxCacheEntries`
-- Implement cache cleanup policies
-
-### Slow Cache Operations
-
-**Symptom**: High latency on cached validations
-
-**Solutions**:
-- Use faster storage (SSD vs HDD)
-- Reduce `MaxCacheEntries` to minimize metadata overhead
-- Consider using in-memory cache if persistence is not required
-
-## Future Enhancements
-
-Planned improvements for the caching system:
-
-- [ ] Distributed cache implementation using Redis
-- [ ] Cache warming strategies for frequently validated products
-- [ ] Telemetry and metrics integration
-- [ ] Automatic cache size management based on disk space
-- [ ] Support for cache replication across instances
-- [ ] Cache invalidation API endpoints
-
-## Example: Complete ASP.NET Core Integration
-
-```csharp
-using Chainborn.Licensing.Validator;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Configure file-based caching
-builder.Services.AddLicenseValidation(options =>
-{
-    options.PolicyDirectory = "/etc/chainborn/policies";
-    options.CacheDirectory = "/var/chainborn/cache";
-    options.MaxCacheEntries = 100;
-});
-
-var app = builder.Build();
-
-app.MapGet("/health", () => 
-    Results.Ok(new { status = "healthy", cache = "file-based" }));
-
-app.Run();
-```
-
-## References
-
-- [IValidationCache Interface](../../src/sdk/Chainborn.Licensing.Abstractions/IValidationCache.cs)
-- [FileValidationCache Implementation](../../src/validator/Chainborn.Licensing.Validator/FileValidationCache.cs)
-- [Validator Architecture](./README.md)
-- [Sample Application](../../src/sample-app/Chainborn.Licensing.SampleApp/)
